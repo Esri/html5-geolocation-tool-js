@@ -266,7 +266,7 @@ function toggleHighAccuracy(){
 }
 
 function sendEmail(){
-    window.open('mailto:myself@example.com?subject=HTML5 Accuracy Data&body=' + encodeURIComponent(_accuracyDataCSV));
+    window.open('mailto:myself@example.com?subject=HTML5 Accuracy Data&body=' + encodeURIComponent(_helper.getAccuracyCSV()));
 }
 
 dojo.ready(init);
