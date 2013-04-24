@@ -37,7 +37,7 @@ var LocationHelper = function(/* esri.Map */ map){
     this.map = map;
     this._setHighAccuracy = true;
     this._webMercatorMapPoint = null;
-    this._accuracyDataCSV = "date,lat,lon,accuracy,high_accuracy_boolean,altitude,heading,speed,altitude_accuracy,\r\n";
+    this._accuracyDataCSV = "date,lat,lon,accuracy,high_accuracy_boolean,altitude,heading,speed,altitude_accuracy,interval_time,total_elapsed_time,\r\n";
     this._locationDiv = document.getElementById("location");
     this._altitudeDiv = document.getElementById("altitude");
     this._speedDiv = document.getElementById("speed");
@@ -69,6 +69,8 @@ LocationHelper.prototype.startHTML5Location = function(){
     var timeStampDiv = this._timeStampDiv;
     var accuracyDiv = this._accuracyDiv;
     var accuracyDataCSV = this._accuracyDataCSV;
+    var dateStart = new Date();
+    var previousDate = null;
 
     if (navigator.geolocation) {
 
@@ -114,6 +116,22 @@ LocationHelper.prototype.startHTML5Location = function(){
             //Otherwise you'll create a huge memory leak. :-)
             if(this._accuracyDataCSV.length < 50000){
 
+                var newDateDiff = null;
+                var ms = null;
+                var dateNow = new Date();
+                var totalElapsedTime =  _getTimeDifference(new Date(Math.abs(dateNow.getTime() - dateStart.getTime())));
+
+                if(previousDate == null){
+                    newDateDiff = new Date(Math.abs(dateNow.getTime() - dateStart.getTime()));
+                }
+                else{
+                    newDateDiff = new Date(Math.abs(dateNow.getTime() - previousDate.getTime()));
+                }
+
+                previousDate = new Date();
+
+                var dateResultString = _getTimeDifference(newDateDiff);
+
                 this._accuracyDataCSV = this._accuracyDataCSV + Date(html5TimeStamp).toLocaleString() +
                     "," + html5Lat +
                     "," + html5Lon +
@@ -123,6 +141,8 @@ LocationHelper.prototype.startHTML5Location = function(){
                     "," + html5Heading +
                     "," + html5Speed +
                     "," + position.coords.altitudeAccuracy +
+                    "," + dateResultString +
+                    "," + totalElapsedTime +
                     ",\r\n";
             }
             else{
@@ -140,6 +160,23 @@ LocationHelper.prototype.startHTML5Location = function(){
 
     }
 
+    function _getTimeDifference(/* Date */ date){;
+        var msec = date;
+        var hh = Math.floor(msec / 1000 / 60 / 60);
+        msec -= hh * 1000 * 60 * 60;
+        var mm = Math.floor(msec / 1000 / 60);
+        msec -= mm * 1000 * 60;
+        var ss = Math.floor(msec / 1000);
+        msec -= ss * 1000;
+
+        hh = hh < 10 ? "0" + hh : hh;
+        mm = mm < 10 ? "0" + mm : mm;
+        ss = ss < 10 ? "0" + ss : ss;
+
+        console.log("time: " + hh + ":" + mm + ":" + ss + ":" + msec);
+
+        return hh + ":" + mm + ":" + ss + ":" + msec;
+    }
 
     function _showLocation(myLat,myLong,/* Web Mercator */mapPoint) {
 
