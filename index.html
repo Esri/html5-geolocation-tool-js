@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="http://serverapi.arcgisonline.com/jsapi/arcgis/3.3/js/esri/css/esri.css">
     <link rel="stylesheet" type="text/css" href="css/Geolocation.css" />
     <script src="http://serverapi.arcgisonline.com/jsapi/arcgis/3.3compact/"></script>
-    <script src="scripts/html5.js" type="text/javascript"></script>
+    <script src="scripts/LocationHelper.js" type="text/javascript"></script>
 </head>
 
 <body>
@@ -40,7 +40,7 @@
                 <div id="heading">Heading: N/A</div>
             </td>
             <td>
-                <div id="accuracy">0m</div>
+                <div id="accuracy">Accuracy: 0m</div>
             </td>
         </tr>
         <tr>
@@ -54,5 +54,73 @@
     </table>
 </div>
 <button id="sendEmailButton" onclick="sendEmail()">Email CSV</button>
+<script type="text/javascript">
+    dojo.require("esri.map");
+
+    var map;
+    var _helper;
+
+    function init() {
+
+        map = new esri.Map("map",{
+            basemap:"topo",
+            slider: false
+        });
+
+        dojo.connect(map, "onLoad", function () {
+
+            //Some browsers don't show full height after onLoad
+            setTimeout(function(){
+                map.reposition();
+                map.resize();
+            },500);
+
+            _helper = new LocationHelper(map);
+            _helper.startGeolocation();
+        });
+    }
+
+    /**
+     * Public function for shutting down the geolocation service.
+     */
+    function shutOffGeolocation(){
+        var button = dojo.byId("shutOffGeo");
+
+        if(_helper.getWatchId() != null){
+            _helper.stopGeolocation();
+            button.innerHTML = "Start Geolocation";
+            alert("Geolocation has been shutoff");
+        }
+        else{
+            _helper.startGeolocation();
+            button.innerHTML = "Stop Geolocation";
+        }
+    }
+
+    /**
+     * Public function for toggling the geolocation high-accuracy property on/off
+     */
+    function toggleHighAccuracy(){
+        var button = dojo.byId("toggleHighAccuracy");
+
+        if(_helper.getHighAccuracy() == true){
+            button.innerHTML = "High Accuracy Off";
+            _helper.setHighAccuracy(false);
+        }
+        else{
+            button.innerHTML = "High Accuracy On";
+            _helper.setHighAccuracy(true);
+        }
+    }
+
+    /**
+     * Public function for emailing a CSV file containing geolocation service information.
+     */
+    function sendEmail(){
+        window.open('mailto:myself@example.com?subject=HTML5 Accuracy Data&body=' + encodeURIComponent(_helper.getAccuracyCSV()));
+    }
+
+    dojo.ready(init);
+</script>
 </body>
 </html>
