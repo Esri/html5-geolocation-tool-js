@@ -6,28 +6,54 @@
  * Author: @agup (Twitter)
  */
 var LocationHelper = function(/* esri.Map */ map){
+
+    this._map = map;
     this._watchID = null;
-    this.map = map;
     this._setHighAccuracy = true;
     this._webMercatorMapPoint = null;
     this._accuracyDataCSV = "date,lat,lon,accuracy,high_accuracy_boolean,altitude,heading,speed,altitude_accuracy,interval_time,total_elapsed_time,\r\n";
-    this._locationDiv = document.getElementById("location");
-    this._altitudeDiv = document.getElementById("altitude");
-    this._speedDiv = document.getElementById("speed");
-    this._headingDiv = document.getElementById("heading");
-    this._timeStampDiv = document.getElementById("timestamp");
-    this._accuracyDiv = document.getElementById("accuracy");
+
+    /**
+     * Required
+     * @type {<div>}
+     */
+    this.locationDiv = null;
+    /**
+     * Required
+     * @type {<div>}
+     */
+    this.altitudeDiv = null;
+    /**
+     * Required
+     * @type {<div>}
+     */
+    this.headingDiv = null;
+    /**
+     * Required
+     * @type {<div>}
+     */
+    this.speedDiv = null;
+    /**
+     * Required
+     * @type {<div>}
+     */
+    this.timeStampDiv = null;
+    /**
+     * Required
+     * @type {<div>}
+     */
+    this.accuracyDiv = null;
 
     var supportsOrientationChange = "onorientationchange" in window,
         orientationEvent = supportsOrientationChange ? "orientationchange" : "resize";
 
     window.addEventListener(orientationEvent, function () {
         var time = setTimeout(function(){
-            if(this.map != null && this._webMercatorMapPoint != null){
-                this.map.reposition();
-                this.map.resize();
+            if(this._map != null && this._webMercatorMapPoint != null){
+                this._map.reposition();
+                this._map.resize();
                 //map.width = screen.width;
-                this.map.centerAndZoom(this._webMercatorMapPoint, 14);
+                this._map.centerAndZoom(this._webMercatorMapPoint, 14);
             }
         },750);
     }, false);
@@ -38,39 +64,42 @@ var LocationHelper = function(/* esri.Map */ map){
  */
 LocationHelper.prototype.startGeolocation = function(){
 
-    var locationDiv = this._locationDiv;
-    var altitudeDiv = this._altitudeDiv;
-    var speedDiv = this._speedDiv;
-    var headingDiv = this._headingDiv;
-    var timeStampDiv = this._timeStampDiv;
-    var accuracyDiv = this._accuracyDiv;
-    var accuracyDataCSV = this._accuracyDataCSV;
-    var dateStart = new Date();
-    var previousDate = null;
+    var _dateStart = new Date();
+    var _previousDate = null;
 
-    if (navigator.geolocation) {
+    try{
+        if(this.locationDiv == null || this.altitudeDiv == null || this.headingDiv == null || this.speedDiv == null || this.timeStampDiv == null || this.accuracyDiv == null ){
+            throw new Error("LocationHelper: you must add all required DIVS");
+        }
 
-        navigator.geolocation.getCurrentPosition(
-            _processGeolocationResult.bind(this)/* use bind() to maintain context */,
-            _html5Error
-        );
+        else if (navigator.geolocation) {
 
-        this._watchID = navigator.geolocation.watchPosition(
-            _processGeolocationResult.bind(this),
-            _html5Error,
-            {
-                timeout:36000,
-                enableHighAccuracy: this._setHighAccuracy,
-                maximumAge: 5000
-            }
-        );
+            navigator.geolocation.getCurrentPosition(
+                _processGeolocationResult.bind(this)/* use bind() to maintain scope */,
+                _html5Error
+            );
 
-        //For more info on maximumAge (milliseconds): http://dev.w3.org/geo/api/spec-source.html#max-age
-        //For more info on timeout (milliseconds): http://dev.w3.org/geo/api/spec-source.html#timeout
-        //For more info on enableHighAccuracy: http://dev.w3.org/geo/api/spec-source.html#high-accuracy
+            this._watchID = navigator.geolocation.watchPosition(
+                _processGeolocationResult.bind(this),
+                _html5Error,
+                {
+                    timeout:36000,
+                    enableHighAccuracy: this._setHighAccuracy,
+                    maximumAge: 5000
+                }
+            );
+
+            //For more info on maximumAge (milliseconds): http://dev.w3.org/geo/api/spec-source.html#max-age
+            //For more info on timeout (milliseconds): http://dev.w3.org/geo/api/spec-source.html#timeout
+            //For more info on enableHighAccuracy: http://dev.w3.org/geo/api/spec-source.html#high-accuracy
+        }
+        else {
+            alert("Sorry, your browser does not support geolocation");
+        }
     }
-    else {
-        alert("Sorry, your browser does not support geolocation");
+    catch(err){
+        alert("Unable to start geolocation. See console.log for message.")
+        console.log(err.toString());
     }
 
     /**
@@ -88,7 +117,13 @@ LocationHelper.prototype.startGeolocation = function(){
         var html5Altitude = position.coords.altitude;
 
         console.log("success " + html5Lat + ", " + html5Lon);
-        _displayGeocodedLocation(html5Lat, html5Lon, html5TimeStamp, html5Accuracy,html5Heading,html5Speed,html5Altitude);
+        try{
+            this._displayGeocodedLocation(html5Lat, html5Lon, html5TimeStamp, html5Accuracy,html5Heading,html5Speed,html5Altitude);
+        }
+        catch(error)
+        {
+            console.log("Error " + error.toString());
+        }
 
         if (html5Lat != null && html5Lon != null) {
             //zoomToLocation(html5Lat, html5Lon);
@@ -100,16 +135,16 @@ LocationHelper.prototype.startGeolocation = function(){
                 var newDateDiff = null;
                 var ms = null;
                 var dateNow = new Date();
-                var totalElapsedTime =  _getTimeDifference(new Date(Math.abs(dateNow.getTime() - dateStart.getTime())));
+                var totalElapsedTime =  _getTimeDifference(new Date(Math.abs(dateNow.getTime() - _dateStart.getTime())));
 
-                if(previousDate == null){
-                    newDateDiff = new Date(Math.abs(dateNow.getTime() - dateStart.getTime()));
+                if(_previousDate == null){
+                    newDateDiff = new Date(Math.abs(dateNow.getTime() - _dateStart.getTime()));
                 }
                 else{
-                    newDateDiff = new Date(Math.abs(dateNow.getTime() - previousDate.getTime()));
+                    newDateDiff = new Date(Math.abs(dateNow.getTime() - _previousDate.getTime()));
                 }
 
-                previousDate = new Date();
+                _previousDate = new Date();
 
                 var dateResultString = _getTimeDifference(newDateDiff);
 
@@ -133,12 +168,10 @@ LocationHelper.prototype.startGeolocation = function(){
             if(html5Lat != 0){
                 var wgsPt = new esri.geometry.Point(html5Lon,html5Lat, new esri.SpatialReference({ wkid: 4326 }))
                 this._webMercatorMapPoint = esri.geometry.geographicToWebMercator(wgsPt);
-                this.map.centerAndZoom(this._webMercatorMapPoint, 14);
-                _showLocation(html5Lat,html5Lon,this._webMercatorMapPoint);
+                //this._map.centerAndZoom(this._webMercatorMapPoint, 14);
+                this._showLocation(html5Lat,html5Lon,this._webMercatorMapPoint);
             }
         }
-
-
     }
 
     /**
@@ -166,70 +199,6 @@ LocationHelper.prototype.startGeolocation = function(){
     }
 
     /**
-     * Draw the pushpin graphic on the map
-     * @param myLat
-     * @param myLong
-     * @param mapPoint
-     * @private
-     */
-    function _showLocation(myLat,myLong,/* Web Mercator */mapPoint) {
-
-        var HomeSymbol = null;
-
-        if(window.devicePixelRatio >= 2){
-            HomeSymbol = new esri.symbol.PictureMarkerSymbol("images/pushpin104x108.png", 104, 108).setColor(new dojo.Color([0, 0, 255]));
-        }
-        else{
-            HomeSymbol = new esri.symbol.PictureMarkerSymbol("images/pushpin2.png", 48, 48).setColor(new dojo.Color([0, 0, 255]));
-        }
-        var pictureGraphic = new esri.Graphic(mapPoint, HomeSymbol)
-
-        //    map.infoWindow.setTitle("HTML5 Location");
-        //    map.infoWindow.setContent('Lat : ' + myLat.toFixed(4) + ", " + ' Long: ' + myLong.toFixed(4));
-        //    map.infoWindow.resize(200,65);
-        //    map.infoWindow.show(mapPoint, esri.dijit.InfoWindow.ANCHOR_LOWERLEFT);
-
-        this.map.graphics.clear();
-        this.map.graphics.add(pictureGraphic);
-
-    }
-
-    /**
-     * Write out the geolocation results to the display
-     * @param html5Lat
-     * @param html5Lon
-     * @param html5TimeStamp
-     * @param html5Accuracy
-     * @param html5Heading
-     * @param html5Speed
-     * @param html5Altitude
-     * @private
-     */
-    function _displayGeocodedLocation(html5Lat, html5Lon, html5TimeStamp, html5Accuracy, html5Heading, html5Speed, html5Altitude) {
-        var altitude = "N/A";
-        if(html5Altitude != null) altitude = html5Altitude.toFixed(2) + "m";
-        var speed = "N/A";
-        if (html5Speed != null) (html5Speed * 3600 / 1000).toFixed(2) + "km/hr";
-        var heading = "N/A";
-        if (html5Heading != null) html5Heading.toFixed(2) + "deg";
-
-        locationDiv.innerHTML = html5Lat.toFixed(4) + ", " + html5Lon.toFixed(4);
-        altitudeDiv.innerHTML = "Altitude: " + altitude;
-        speedDiv.innerHTML = "Speed: " + speed;
-        headingDiv.innerHTML = "Heading: " + heading;
-
-        //Tested on desktop IE9, Chrome 17, Firefox 10, Safari ?
-        //Mobile browser: Android 2.3.6
-        //There is a bug in Safari browsers on Mac that shows the year as 1981
-        //To get around the bug you could manually parse and then format the date. I chose not to for this demo.
-        var date = new Date(html5TimeStamp)
-        timeStampDiv.innerHTML = date;
-        accuracyDiv.innerHTML =
-            "Accuracy: " + html5Accuracy.toFixed(2) + "m";
-
-    }
-
-    /**
      * Handle geolocation service errors
      * @param error
      * @private
@@ -254,6 +223,71 @@ LocationHelper.prototype.startGeolocation = function(){
 
 }
 
+/**
+ * Write out the geolocation results to the display
+ * @param html5Lat
+ * @param html5Lon
+ * @param html5TimeStamp
+ * @param html5Accuracy
+ * @param html5Heading
+ * @param html5Speed
+ * @param html5Altitude
+ * @private
+ */
+LocationHelper.prototype._displayGeocodedLocation = function(html5Lat, html5Lon, html5TimeStamp, html5Accuracy, html5Heading, html5Speed, html5Altitude) {
+    var altitude = "N/A";
+    if(html5Altitude != null) altitude = html5Altitude.toFixed(2) + "m";
+    var speed = "N/A";
+    if (html5Speed != null) (html5Speed * 3600 / 1000).toFixed(2) + "km/hr";
+    var heading = "N/A";
+    if (html5Heading != null) html5Heading.toFixed(2) + "deg";
+
+    this.locationDiv.innerHTML = html5Lat.toFixed(4) + ", " + html5Lon.toFixed(4);
+    this.altitudeDiv.innerHTML = "Altitude: " + altitude;
+    this.speedDiv.innerHTML = "Speed: " + speed;
+    this.headingDiv.innerHTML = "Heading: " + heading;
+
+    //Tested on desktop IE9, Chrome 17, Firefox 10, Safari ?
+    //Mobile browser: Android 2.3.6
+    //There is a bug in Safari browsers on Mac that shows the year as 1981
+    //To get around the bug you could manually parse and then format the date. I chose not to for this demo.
+    var date = new Date(html5TimeStamp)
+    this.timeStampDiv.innerHTML = date;
+    this.accuracyDiv.innerHTML =
+        "Accuracy: " + html5Accuracy.toFixed(2) + "m";
+
+}
+
+/**
+ * Draw the pushpin graphic on the map
+ * @param myLat
+ * @param myLong
+ * @param geometry
+ * @private
+ */
+LocationHelper.prototype._showLocation = function(/* number */myLat,/* number */myLong,/* esri.geometry.Geometry */geometry) {
+
+    var HomeSymbol = null;
+
+    if(window.devicePixelRatio >= 2){
+        HomeSymbol = new esri.symbol.PictureMarkerSymbol("images/pushpin104x108.png", 104, 108).setColor(new dojo.Color([0, 0, 255]));
+    }
+    else{
+        HomeSymbol = new esri.symbol.PictureMarkerSymbol("images/pushpin2.png", 48, 48).setColor(new dojo.Color([0, 0, 255]));
+    }
+    var pictureGraphic = new esri.Graphic(geometry, HomeSymbol);
+
+    //    map.infoWindow.setTitle("HTML5 Location");
+    //    map.infoWindow.setContent('Lat : ' + myLat.toFixed(4) + ", " + ' Long: ' + myLong.toFixed(4));
+    //    map.infoWindow.resize(200,65);
+    //    map.infoWindow.show(mapPoint, esri.dijit.InfoWindow.ANCHOR_LOWERLEFT);
+
+    this._map.graphics.clear();
+    this._map.graphics.add(pictureGraphic);
+    this._map.centerAndZoom(geometry, 14);
+
+}
+39.9197182, -105.11720869999999
 /**
  * Sets the high accuracy property. Setting this property will force
  * the geolocation service to restart with the new property.
@@ -301,6 +335,6 @@ LocationHelper.prototype.stopGeolocation = function(){
         this._watchID = null;
     }
     catch(err){
-        console.log("stopGeolocation error: " + err);
+        console.log("stopGeolocation error: " + err.toString());
     }
 }
