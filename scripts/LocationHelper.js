@@ -287,7 +287,7 @@ LocationHelper.prototype._showLocation = function(/* number */myLat,/* number */
     this._map.centerAndZoom(geometry, 14);
 
 }
-39.9197182, -105.11720869999999
+
 /**
  * Sets the high accuracy property. Setting this property will force
  * the geolocation service to restart with the new property.
