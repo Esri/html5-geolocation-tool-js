@@ -12,7 +12,40 @@ var LocationHelper = function(/* esri.Map */ map){
     this._setHighAccuracy = true;
     this._webMercatorMapPoint = null;
     this._accuracyDataCSV = "date,lat,lon,accuracy,high_accuracy_boolean,altitude,heading,speed,altitude_accuracy,interval_time,total_elapsed_time,\r\n";
+    this._pushPinLarge = new esri.symbol.PictureMarkerSymbol("images/pushpin104x108.png", 104, 108).setColor(new dojo.Color([0, 0, 255]));
+    this._pushPinSmall = new esri.symbol.PictureMarkerSymbol("images/pushpin2.png", 48, 48).setColor(new dojo.Color([0, 0, 255]));
+    this._locatorMarkerLarge = new esri.symbol.SimpleMarkerSymbol(esri.symbol.SimpleMarkerSymbol.STYLE_DIAMOND,
+        10,
+        new esri.symbol.SimpleLineSymbol(esri.symbol.SimpleLineSymbol.STYLE_SOLID, new dojo.Color([0,0,0]), 1),
+        new dojo.Color([255,255,0,0.5]));
 
+    this._locatorMarkerSmall = new esri.symbol.SimpleMarkerSymbol(esri.symbol.SimpleMarkerSymbol.STYLE_DIAMOND,
+        5,
+        new esri.symbol.SimpleLineSymbol(esri.symbol.SimpleLineSymbol.STYLE_SOLID, new dojo.Color([0,0,0]), 1),
+        new dojo.Color([255,255,0,0.5]));
+    this._locatorMarkerGraphicsLayer = new esri.layers.GraphicsLayer();
+    this._map.addLayer(this._locatorMarkerGraphicsLayer);
+
+    /**
+     * Allows points to accumulate on map. Default is true.
+     * @type {boolean}
+     */
+    this.accumulate = true;
+    /**
+     * Geolocation timeout property
+     * @type {number}
+     */
+    this.timeout = 15000;
+    /**
+     * Geolocation maximumAge property
+     * @type {number}
+     */
+    this.maximumAge = 60000;
+    /**
+     * Required
+     * @type {<div>}
+     */
+    this.geoIndicatorDiv = null;
     /**
      * Required
      * @type {<div>}
@@ -55,7 +88,7 @@ var LocationHelper = function(/* esri.Map */ map){
                 //map.width = screen.width;
                 this._map.centerAndZoom(this._webMercatorMapPoint, 14);
             }
-        },750);
+        },500);
     }, false);
 }
 
@@ -83,9 +116,9 @@ LocationHelper.prototype.startGeolocation = function(){
                 _processGeolocationResult.bind(this),
                 _html5Error,
                 {
-                    timeout:36000,
+                    timeout:this.timeout,
                     enableHighAccuracy: this._setHighAccuracy,
-                    maximumAge: 5000
+                    maximumAge: this.maximumAge
                 }
             );
 
@@ -246,6 +279,8 @@ LocationHelper.prototype._displayGeocodedLocation = function(html5Lat, html5Lon,
     this.altitudeDiv.innerHTML = "Altitude: " + altitude;
     this.speedDiv.innerHTML = "Speed: " + speed;
     this.headingDiv.innerHTML = "Heading: " + heading;
+    this.geoIndicatorDiv.text("Geo: ON");
+    this.geoIndicatorDiv.css('color','green');
 
     //Tested on desktop IE9, Chrome 17, Firefox 10, Safari ?
     //Mobile browser: Android 2.3.6
@@ -268,14 +303,16 @@ LocationHelper.prototype._displayGeocodedLocation = function(html5Lat, html5Lon,
 LocationHelper.prototype._showLocation = function(/* number */myLat,/* number */myLong,/* esri.geometry.Geometry */geometry) {
 
     var HomeSymbol = null;
+    var locatorSymbol = null;
 
     if(window.devicePixelRatio >= 2){
-        HomeSymbol = new esri.symbol.PictureMarkerSymbol("images/pushpin104x108.png", 104, 108).setColor(new dojo.Color([0, 0, 255]));
+        HomeSymbol = this._pushPinLarge;
+        locatorSymbol = this._locatorMarkerLarge;
     }
     else{
-        HomeSymbol = new esri.symbol.PictureMarkerSymbol("images/pushpin2.png", 48, 48).setColor(new dojo.Color([0, 0, 255]));
+        HomeSymbol = this._pushPinSmall;
+        locatorSymbol = this._locatorMarkerSmall;
     }
-    var pictureGraphic = new esri.Graphic(geometry, HomeSymbol);
 
     //    map.infoWindow.setTitle("HTML5 Location");
     //    map.infoWindow.setContent('Lat : ' + myLat.toFixed(4) + ", " + ' Long: ' + myLong.toFixed(4));
@@ -283,8 +320,10 @@ LocationHelper.prototype._showLocation = function(/* number */myLat,/* number */
     //    map.infoWindow.show(mapPoint, esri.dijit.InfoWindow.ANCHOR_LOWERLEFT);
 
     this._map.graphics.clear();
-    this._map.graphics.add(pictureGraphic);
+    this._map.graphics.add(new esri.Graphic(geometry, HomeSymbol));
     this._map.centerAndZoom(geometry, 14);
+
+    if(this.accumulate == true)this._locatorMarkerGraphicsLayer.add(new esri.Graphic(geometry, locatorSymbol));
 
 }
 
@@ -333,6 +372,8 @@ LocationHelper.prototype.stopGeolocation = function(){
     try{
         navigator.geolocation.clearWatch(this._watchID);
         this._watchID = null;
+        this.geoIndicatorDiv.text("Geo: OFF");
+        this.geoIndicatorDiv.css('color','red');
     }
     catch(err){
         console.log("stopGeolocation error: " + err.toString());
