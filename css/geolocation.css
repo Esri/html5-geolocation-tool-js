@@ -26,6 +26,7 @@ html,body, div[data-role ="page"] {
     z-index: 0;
 
 }
+
 #div1{
 	position:absolute;
     margin: 5px;

@@ -1,7 +1,7 @@
 /**
  * Geolocation API demonstration library.
  *
- * Version: 0.4 (Apr 2013)
+ * Version: 0.4 (May 2013)
  * Creation Date: Feb. 2012
  * Author: @agup (Twitter)
  */
@@ -275,10 +275,10 @@ LocationHelper.prototype._displayGeocodedLocation = function(html5Lat, html5Lon,
     var heading = "N/A";
     if (html5Heading != null) html5Heading.toFixed(2) + "deg";
 
-    this.locationDiv.innerHTML = html5Lat.toFixed(4) + ", " + html5Lon.toFixed(4);
-    this.altitudeDiv.innerHTML = "Altitude: " + altitude;
-    this.speedDiv.innerHTML = "Speed: " + speed;
-    this.headingDiv.innerHTML = "Heading: " + heading;
+    this.locationDiv.text(html5Lat.toFixed(4) + ", " + html5Lon.toFixed(4));
+    this.altitudeDiv.text("Altitude: " + altitude);
+    this.speedDiv.text("Speed: " + speed);
+    this.headingDiv.text("Heading: " + heading);
     this.geoIndicatorDiv.text("Geo: ON");
     this.geoIndicatorDiv.css('color','green');
 
@@ -287,9 +287,8 @@ LocationHelper.prototype._displayGeocodedLocation = function(html5Lat, html5Lon,
     //There is a bug in Safari browsers on Mac that shows the year as 1981
     //To get around the bug you could manually parse and then format the date. I chose not to for this demo.
     var date = new Date(html5TimeStamp)
-    this.timeStampDiv.innerHTML = date;
-    this.accuracyDiv.innerHTML =
-        "Accuracy: " + html5Accuracy.toFixed(2) + "m";
+    this.timeStampDiv.text(date);
+    this.accuracyDiv.text("Accuracy: " + html5Accuracy.toFixed(2) + "m");
 
 }
 
