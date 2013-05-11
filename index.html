@@ -30,7 +30,7 @@
         <table id="table1" border="1">
             <tr>
                 <td>
-                    <div id="altitude">Altitude: N/A</div>
+                    <div id="altitude">ALT: N/A</div>
                 </td>
                 <td colspan="2">
                     <div id="location">0.00, 0.00</div>
@@ -38,7 +38,7 @@
             </tr>
             <tr>
                 <td>
-                    <div id="speed">Speed: N/A</div>
+                    <div id="speed">SPD: N/A</div>
                 </td>
                 <td colspan="2">
                     <div id="timestamp">0:00:00</div>
@@ -46,10 +46,10 @@
             </tr>
             <tr>
                 <td>
-                    <div id="heading">Heading: N/A</div>
+                    <div id="heading">HDG: N/A</div>
                 </td>
                 <td>
-                    <div id="accuracy">Accuracy: 0m</div>
+                    <div id="accuracy">Acc: 0m</div>
                 </td>
                 <td>
                     <div id="geo-indicator">Geo: OFF</div>
@@ -158,8 +158,13 @@
 
         controller.map = new esri.Map("map",{
             basemap:"topo",
-            slider: true
+            slider: true,
+            zoom: 14
         });
+
+        dojo.connect(controller.map, "onZoomEnd", function (extent,zoom,anchor,level){
+            controller.helper.zoomLevel = level;
+        })
 
         dojo.connect(controller.map, "onLoad", function () {
 
@@ -167,15 +172,13 @@
             var zoom_slider_width = parseFloat($('#map_zoom_slider').css('width'));
             $('#div1').css('left',zoom_slider_left * 2 + zoom_slider_width + "px");
 
-            //Some browsers don't show full height after onLoad
-            setTimeout(function(){
-                controller.map.reposition();
-                controller.map.resize();
-            },450);
+            controller.map.reposition();
+            controller.map.resize();
 
             //Don't start location service until after map loads
             controller.helper = new LocationHelper(controller.map);
 
+            controller.helper.mapDiv = $("#map");
             controller.helper.geoIndicatorDiv = $("#geo-indicator");
             controller.helper.locationDiv = $("#location");
             controller.helper.altitudeDiv = $("#altitude");
@@ -185,6 +188,34 @@
             controller.helper.accuracyDiv = $("#accuracy");
 
             controller.helper.startGeolocation();
+            //Some browsers don't show full height after onLoad
+
+            var supportsOrientationChange = "onorientationchange" in window,
+                    orientationEvent = supportsOrientationChange ? "orientationchange" : "resize";
+
+            window.addEventListener(orientationEvent, function () {
+                controller.helper.rotateScreen(400);
+            }, false);
+
+            var t = $("div:jqmData(role='page')");
+            console.log("test");
+
+            $("div:jqmData(role='page')").on('pagehide',function(){
+                controller.helper.viewChange = this.id;
+                console.log('view changed ' + controller.map.height + ", " + controller.map.width);
+                controller.helper.rotateScreen(400);
+//                if(controller.map.height == 0){ console.log('yo')
+//                    setTimeout(function(){
+//                        controller.map.height = 900;
+//                        controller.map.width = 800;
+//
+//                        controller.map.reposition();
+//                        controller.map.resize();
+//                    }, 750);
+
+//                }
+            });
+
         });
     });
 
@@ -306,7 +337,7 @@
             else{
                 controller.helper.startGeolocation();
             }
-        },250);
+        },500);
     });
 
     /**
@@ -321,7 +352,7 @@
             else{
                 controller.helper.setHighAccuracy(true);
             }
-        },250);
+        },500);
     });
 
     /**

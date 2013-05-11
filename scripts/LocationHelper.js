@@ -25,7 +25,14 @@ var LocationHelper = function(/* esri.Map */ map){
         new dojo.Color([255,255,0,0.5]));
     this._locatorMarkerGraphicsLayer = new esri.layers.GraphicsLayer();
     this._map.addLayer(this._locatorMarkerGraphicsLayer);
+    this._supportsLocalStorage = false;
+    this._orientation = null;
 
+    /**
+     * A property indicating a reference to this
+     * @type {null}
+     */
+    this.viewChange = null;
     /**
      * Allows points to accumulate on map. Default is true.
      * @type {boolean}
@@ -41,6 +48,11 @@ var LocationHelper = function(/* esri.Map */ map){
      * @type {number}
      */
     this.maximumAge = 60000;
+    /**
+     * Required
+     * @type {esri.Map}
+     */
+    this.mapDiv = null;
     /**
      * Required
      * @type {<div>}
@@ -76,20 +88,41 @@ var LocationHelper = function(/* esri.Map */ map){
      * @type {<div>}
      */
     this.accuracyDiv = null;
+    /**
+     * Sets the map zoom level. Default = 14;
+     * @type {int}
+     */
+    this.zoomLevel = 14;
 
-    var supportsOrientationChange = "onorientationchange" in window,
-        orientationEvent = supportsOrientationChange ? "orientationchange" : "resize";
+    /**
+     * Local Storage ENUMs
+     * @type {Function}
+     */
+    this.localStorageEnum = (function(){
+        var values = {
+            ZOOM_LEVEL:"zoom_level",
+            LAT:"lat",
+            LON:"lon",
+            MAP_WIDTH:"map_width",
+            MAP_HEIGHT:"map_height"
+        }
 
-    window.addEventListener(orientationEvent, function () {
-        var time = setTimeout(function(){
-            if(this._map != null && this._webMercatorMapPoint != null){
-                this._map.reposition();
-                this._map.resize();
-                //map.width = screen.width;
-                this._map.centerAndZoom(this._webMercatorMapPoint, 14);
-            }
-        },500);
-    }, false);
+        return values;
+    });
+
+    /**
+     * Does browser support localStorage?
+     * Always validate HTML5 functionality :-)
+     */
+    (function (){
+        var support = null;
+        try {
+            support = 'localStorage' in window && window['localStorage'] !== null;
+        } catch (e) {
+            support = false;
+        }
+        this._supportsLocalStorage = support;
+    }).bind(this)();
 }
 
 /**
@@ -99,6 +132,17 @@ LocationHelper.prototype.startGeolocation = function(){
 
     var _dateStart = new Date();
     var _previousDate = null;
+
+    if(this._supportsLocalStorage){
+        try{
+            localStorage.setItem(this.localStorageEnum().MAP_WIDTH,this.mapDiv.width());
+            localStorage.setItem(this.localStorageEnum().MAP_HEIGHT,this.mapDiv.height());
+            window.innerHeight > window.innerWidth ? this._orientation = "portrait" : this._orientation = "landscape";
+        }
+        catch(err){
+            console.log(err.message);
+        }
+    }
 
     try{
         if(this.locationDiv == null || this.altitudeDiv == null || this.headingDiv == null || this.speedDiv == null || this.timeStampDiv == null || this.accuracyDiv == null ){
@@ -203,6 +247,18 @@ LocationHelper.prototype.startGeolocation = function(){
                 this._webMercatorMapPoint = esri.geometry.geographicToWebMercator(wgsPt);
                 //this._map.centerAndZoom(this._webMercatorMapPoint, 14);
                 this._showLocation(html5Lat,html5Lon,this._webMercatorMapPoint);
+
+                if(this._supportsLocalStorage){
+                    localStorage.setItem(this.localStorageEnum().LAT,html5Lat);
+                    localStorage.setItem(this.localStorageEnum().LON,html5Lon);
+                    localStorage.setItem(this.localStorageEnum().ZOOM_LEVEL,this._map.getZoom());
+                }
+                console.log('false, ' +
+                    localStorage.getItem(this.localStorageEnum().MAP_WIDTH) + ", " +
+                    localStorage.getItem(this.localStorageEnum().MAP_HEIGHT) + ", " +
+                    localStorage.getItem(this.localStorageEnum().ZOOM_LEVEL) + ", " +
+                    this._map.getZoom()
+                );
             }
         }
     }
@@ -276,9 +332,9 @@ LocationHelper.prototype._displayGeocodedLocation = function(html5Lat, html5Lon,
     if (html5Heading != null) html5Heading.toFixed(2) + "deg";
 
     this.locationDiv.text(html5Lat.toFixed(4) + ", " + html5Lon.toFixed(4));
-    this.altitudeDiv.text("Altitude: " + altitude);
-    this.speedDiv.text("Speed: " + speed);
-    this.headingDiv.text("Heading: " + heading);
+    this.altitudeDiv.text("ALT: " + altitude);
+    this.speedDiv.text("SPD: " + speed);
+    this.headingDiv.text("HDG: " + heading);
     this.geoIndicatorDiv.text("Geo: ON");
     this.geoIndicatorDiv.css('color','green');
 
@@ -287,8 +343,8 @@ LocationHelper.prototype._displayGeocodedLocation = function(html5Lat, html5Lon,
     //There is a bug in Safari browsers on Mac that shows the year as 1981
     //To get around the bug you could manually parse and then format the date. I chose not to for this demo.
     var date = new Date(html5TimeStamp)
-    this.timeStampDiv.text(date);
-    this.accuracyDiv.text("Accuracy: " + html5Accuracy.toFixed(2) + "m");
+    this.timeStampDiv.text(date.toLocaleString());
+    this.accuracyDiv.text("Acc: " + html5Accuracy.toFixed(2) + "m");
 
 }
 
@@ -320,11 +376,74 @@ LocationHelper.prototype._showLocation = function(/* number */myLat,/* number */
 
     this._map.graphics.clear();
     this._map.graphics.add(new esri.Graphic(geometry, HomeSymbol));
-    this._map.centerAndZoom(geometry, 14);
+    this._map.centerAndZoom(geometry, this.zoomLevel);
 
     if(this.accumulate == true)this._locatorMarkerGraphicsLayer.add(new esri.Graphic(geometry, locatorSymbol));
 
 }
+
+/**
+ * Repositions the map after a screen rotation
+ * @param value Timer delay property in ms
+ */
+LocationHelper.prototype.rotateScreen = (function(value){
+
+    console.log('true, ' +
+        localStorage.getItem(this.localStorageEnum().MAP_WIDTH) + ", " +
+        localStorage.getItem(this.localStorageEnum().MAP_HEIGHT) + ", " +
+        localStorage.getItem(this.localStorageEnum().ZOOM_LEVEL));
+
+    try{
+        if(this.viewChange == null || this.viewChange == "settings"){
+
+            var timeout = null;
+            value != "undefined" ? timeout = value : timeout = 500;
+            setTimeout((function(){
+                if(this._map != null && this._webMercatorMapPoint != null){
+                    if(this._map.height == 0 || this._map.width == 0){
+                        if(this._orientation == "portrait")
+                        {
+                            this._map.width = localStorage.getItem(this.localStorageEnum().MAP_WIDTH);
+                            this._map.height = localStorage.getItem(this.localStorageEnum().MAP_HEIGHT);
+                        }
+                        else{
+                            this._map.width = localStorage.getItem(this.localStorageEnum().MAP_HEIGHT);
+                            this._map.height = localStorage.getItem(this.localStorageEnum().MAP_WIDTH);
+                        }
+
+                        this._map.resize();
+                        this._map.reposition();
+                        //map.width = screen.width;
+
+                        var wgsPt = new esri.geometry.Point(
+                            localStorage.getItem(this.localStorageEnum().LON),
+                            localStorage.getItem(this.localStorageEnum().LAT), new esri.SpatialReference({ wkid: 4326 }))
+
+                        this._map.centerAndZoom(
+                            esri.geometry.geographicToWebMercator(wgsPt),
+                            localStorage.getItem(this.localStorageEnum().ZOOM_LEVEL)
+                        );
+                    }
+                    else{
+                        this._map.resize();
+                        this._map.reposition();
+
+                        var wgsPt = new esri.geometry.Point(
+                            localStorage.getItem(this.localStorageEnum().LON),
+                            localStorage.getItem(this.localStorageEnum().LAT), new esri.SpatialReference({ wkid: 4326 }))
+                        //map.width = screen.width;
+                        this._map.centerAndZoom(esri.geometry.geographicToWebMercator(wgsPt), this.zoomLevel);
+                    }
+                }
+
+            }).bind(this),timeout);
+        }
+    }
+    catch(err){
+        console.log("rotateScreen() error " + err.message);
+    }
+
+});
 
 /**
  * Sets the high accuracy property. Setting this property will force
