@@ -29,8 +29,9 @@ var LocationHelper = function(/* esri.Map */ map){
     this._orientation = null;
 
     /**
-     * A property indicating a reference to this
-     * @type {null}
+     * A property indicating a reference to the current view.
+     * Default = null
+     * @type {String}
      */
     this.viewChange = null;
     /**
@@ -108,10 +109,15 @@ var LocationHelper = function(/* esri.Map */ map){
      */
     this.zoomLevel = 14;
     /**
-     * If set to false then alerts will be written to the console.
+     * If set to false then alerts will be silent and errors written to the console.
      * @type {boolean}
      */
     this.useAlerts = true;
+    /**
+     * A reference to the Geolocation On/Off slider
+     * @type {slider}
+     */
+    this.geoSliderOnOff = null;
     /**
      * Local Storage ENUMs
      * @type {Function}
@@ -173,7 +179,7 @@ LocationHelper.prototype.startGeolocation = function(){
 
             navigator.geolocation.getCurrentPosition(
                 _processGeolocationResult.bind(this)/* use bind() to maintain scope */,
-                _html5Error,
+                _html5Error.bind(this),
                 {
                     maximumAge:this.maxAgeCurrentPos,
                     timeout:this.timeoutCurrentPos
@@ -182,7 +188,7 @@ LocationHelper.prototype.startGeolocation = function(){
 
             this._watchID = navigator.geolocation.watchPosition(
                 _processGeolocationResult.bind(this),
-                _html5Error,
+                _html5Error.bind(this),
                 {
                     timeout:this.timeout,
                     enableHighAccuracy: this._setHighAccuracy,
@@ -305,6 +311,7 @@ LocationHelper.prototype.startGeolocation = function(){
         hh = hh < 10 ? "0" + hh : hh;
         mm = mm < 10 ? "0" + mm : mm;
         ss = ss < 10 ? "0" + ss : ss;
+        msec = msec < 10 ? "0" + msec : msec;
 
         console.log("time: " + hh + ":" + mm + ":" + ss + ":" + msec);
 
@@ -322,6 +329,7 @@ LocationHelper.prototype.startGeolocation = function(){
         switch(error.code){
             case 1:
                 error_value = "PERMISSION_DENIED";
+                this.geoSliderOnOff.val("off");
                 break;
             case 2:
                 error_value = "POSITION_UNAVAILABLE";
@@ -332,7 +340,7 @@ LocationHelper.prototype.startGeolocation = function(){
                 break;
         }
 
-        this.useAlerts ?
+        this.useAlerts == true ?
             alert('There was a problem retrieving your location: ' + error_value) :
             console.log('There was a problem retrieving your location: ' + error_value);
     }
@@ -362,8 +370,6 @@ LocationHelper.prototype._displayGeocodedLocation = function(html5Lat, html5Lon,
     this.altitudeDiv.text("ALT: " + altitude);
     this.speedDiv.text("SPD: " + speed);
     this.headingDiv.text("HDG: " + heading);
-    this.geoIndicatorDiv.text("Geo: ON");
-    this.geoIndicatorDiv.css('color','green');
 
     //Tested on desktop IE9, Chrome 17, Firefox 10, Safari ?
     //Mobile browser: Android 2.3.6
@@ -415,7 +421,7 @@ LocationHelper.prototype._showLocation = function(/* number */myLat,/* number */
  */
 LocationHelper.prototype.rotateScreen = (function(value){
 
-    console.log('true, ' +
+    console.log('rotateScreen, ' +
         localStorage.getItem(this.localStorageEnum().MAP_WIDTH) + ", " +
         localStorage.getItem(this.localStorageEnum().MAP_HEIGHT) + ", " +
         localStorage.getItem(this.localStorageEnum().ZOOM_LEVEL));
@@ -427,6 +433,10 @@ LocationHelper.prototype.rotateScreen = (function(value){
             value != "undefined" ? timeout = value : timeout = 500;
             setTimeout((function(){
                 if(this._map != null && this._webMercatorMapPoint != null){
+
+                    //NOTE: This attempts to fix a bug in jQuery where rotating
+                    //device from a child window resets map div values and other map properties.
+                    //TO-DO Still needs some tweaking -- not perfect.
                     if(this._map.height == 0 || this._map.width == 0){
                         if(this._orientation == this.localStorageEnum().PORTRAIT)
                         {
@@ -457,7 +467,9 @@ LocationHelper.prototype.rotateScreen = (function(value){
 
                         var wgsPt = new esri.geometry.Point(
                             localStorage.getItem(this.localStorageEnum().LON),
-                            localStorage.getItem(this.localStorageEnum().LAT), new esri.SpatialReference({ wkid: 4326 }))
+                            localStorage.getItem(this.localStorageEnum().LAT),
+                            new esri.SpatialReference({ wkid: 4326 })
+                        );
                         //map.width = screen.width;
                         this._map.centerAndZoom(esri.geometry.geographicToWebMercator(wgsPt), this.zoomLevel);
                     }

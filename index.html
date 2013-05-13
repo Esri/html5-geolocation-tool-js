@@ -159,6 +159,7 @@
         controller.map = new esri.Map("map",{
             basemap:"topo",
             slider: true,
+            center: [-104.9, 39.7],
             zoom: 14
         });
 
@@ -187,6 +188,7 @@
             controller.helper.headingDiv = $("#heading");
             controller.helper.timeStampDiv = $("#timestamp");
             controller.helper.accuracyDiv = $("#accuracy");
+            controller.helper.geoSliderOnOff = $("#slider-geo-on-off");
 
             controller.helper.startGeolocation();
             //Some browsers don't show full height after onLoad
@@ -198,6 +200,7 @@
                 controller.helper.rotateScreen(400);
             }, false);
 
+            //Fix bug in jQuery that destroys map when child view is rotated
             $("div:jqmData(role='page')").on('pagehide',function(){
                 controller.helper.viewChange = this.id;
                 console.log('view changed ' + controller.map.height + ", " + controller.map.width);
@@ -259,32 +262,29 @@
     /**
      * Public function for shutting down the geolocation service.
      */
-    controller.shutOffGeolocation = (function(){
+    controller.shutOffGeolocation = (function(evt){
 
-        setTimeout(function(){
-            if(controller.helper.getWatchId() != null){
-                controller.helper.stopGeolocation();
-                alert("Geolocation has been shutoff");
-            }
-            else{
-                controller.helper.startGeolocation();
-            }
-        },500);
+        if(evt.target.id == "slider-geo-on-off" && evt.target.value == "on"){
+            controller.restartGeo();
+        }
+        else{
+            controller.helper.stopGeolocation();
+            alert("Geolocation has been shutoff");
+        }
     });
 
     /**
      * Public function for toggling the geolocation high-accuracy property on/off
      */
-    controller.toggleHighAccuracy = (function(){
+    controller.toggleHighAccuracy = (function(evt){
 
-        setTimeout(function (){
-            if(controller.helper.getHighAccuracy() == true){
-                controller.helper.setHighAccuracy(false);
-            }
-            else{
-                controller.helper.setHighAccuracy(true);
-            }
-        },500);
+        if(evt.target.id == "slider-high-accuracy" && evt.target.value == "on"){
+            controller.helper.setHighAccuracy(true);
+        }
+        else{
+            controller.helper.setHighAccuracy(false);
+        }
+
     });
 
     controller.toggleErrorAlerts = (function(evt){
