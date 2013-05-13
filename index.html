@@ -85,39 +85,44 @@
                 <option value="on" selected>On</option>
             </select>
         </div>
-        <div id="settings-border1">
-            <div class="settings" style="width: 200px; margin-top: 10px;">
-                <input type="checkbox" name="checkbox-0" id="checkbox-max-age" data-theme="b" data-mini="true" />
-                <label for="checkbox-max-age">maximumAge = Infinity</label>
+        <div class="settings-border1">
+            <div class="settings-label">Current Position</div>
+            <div data-role="fieldcontain">
+                <label for="max-age-current-pos">&nbsp;&nbsp;maxAge (ms):</label>
+                <input type="text" name="currentPosMaxAge" id="max-age-current-pos" value="60000"  />
             </div>
-            <div class="settings" style="width: 300px; margin-top: 10px;">
-                <div id="label-geo-max-age">Geolocation maximumAge (ms x1000)</div>
-                <input id="slider-max-age" data-type="range" name="slider-max-age"
-                       value="15" min="0" max="60" data-theme="a" data-track-theme="b" />
+            <div data-role="fieldcontain">
+                <label for="timeout-current-pos">&nbsp;&nbsp;timeout (ms):</label>
+                <input type="text" name="currentPosTimeout" id="timeout-current-pos" value="60000"  />
             </div>
-            <div class="settings" style="width: 300px;">
-                <div id="label-geo-timeout">Geolocation timeout (ms x1000)</div>
-                <input data-type="range" name="slider-4" id="slider-timeout"
-                       value="15" min="0" max="60" data-theme="a" data-track-theme="b" />
+            <div class="settings" style="width: 200px; margin-top: 15px;">
+                <button data-theme="b" onclick="controller.restartGeo()" data-mini="true">Restart Geo</button>
             </div>
-            <div class="settings">
-                <div>maximumAge min/millis:</div>
-                <select name="slider-min-milli" id="slider-min-milli" data-role="slider" data-theme="a">
-                    <option value="millis" selected>millis</option>
-                    <option value="mins">mins</option>
-                </select>
+        </div>
+        <div class="settings-border1">
+            <div class="settings-label2">Watch Position</div>
+            <div data-role="fieldcontain">
+                <label for="max-age-watch-pos">&nbsp;&nbsp;maxAge (ms):</label>
+                <input type="text" name="currentPosMaxAge" id="max-age-watch-pos" value="60000"  />
             </div>
-            <div class="settings">
-                <div>timeout min/millis:</div>
-                <select name="slider" id="slider-timeout-min-milli" data-role="slider" data-theme="a">
-                    <option value="millis" selected>millis</option>
-                    <option value="mins">mins</option>
-                </select>
+            <div data-role="fieldcontain">
+                <label for="timeout-watch-pos">&nbsp;&nbsp;timeout (ms):</label>
+                <input type="text" name="currentPosTimeout" id="timeout-watch-pos" value="60000"  />
+            </div>
+            <div class="settings" style="width: 200px; margin-top: 15px;">
+                <button data-theme="b" onclick="controller.restartGeo()" data-mini="true">Restart Geo</button>
             </div>
         </div>
         <div class="settings">
             <div>Accumulate map points:</div>
             <select name="slider" id="slider-accumulate-pts" data-role="slider" data-theme="a">
+                <option value="off">Off</option>
+                <option value="on" selected>On</option>
+            </select>
+        </div>
+        <div class="settings">
+            <div>Handle Errors using alerts:</div>
+            <select name="slider" id="slider-handle-errs" data-role="slider" data-theme="a">
                 <option value="off">Off</option>
                 <option value="on" selected>On</option>
             </select>
@@ -135,13 +140,8 @@
     $('document').ready(function(){
         $("#slider-geo-on-off").on("slidestop",controller.shutOffGeolocation);
         $("#slider-high-accuracy").on("slidestop",controller.toggleHighAccuracy);
-        $("#slider-accumulate-pts").on("slidestop",controller.toggleAccumulate)
-        $("#slider-min-milli").on("slidestop",controller.toggleMaxAge);
-        $("#slider-timeout-min-milli").on("slidestop",controller.toggleTimeout);
-        $("#slider-timeout").on("slidestop",controller.geoTimeoutChangeHandler);
-        $("#slider-max-age").on("slidestop",controller.geoMaxAgeChangeHandler);
-        $("#checkbox-max-age").bind("change",controller.checkboxMaxAgeHandler);
-
+        $("#slider-accumulate-pts").on("slidestop",controller.toggleAccumulate);
+        $("#slider-handle-err").on("slidestop",controller.toggleErrorAlerts)
     })
 
     /**
@@ -168,6 +168,7 @@
 
         dojo.connect(controller.map, "onLoad", function () {
 
+            //Adjust the map's zoom slider
             var zoom_slider_left = parseFloat($('#map_zoom_slider').css('left'));
             var zoom_slider_width = parseFloat($('#map_zoom_slider').css('width'));
             $('#div1').css('left',zoom_slider_left * 2 + zoom_slider_width + "px");
@@ -197,33 +198,38 @@
                 controller.helper.rotateScreen(400);
             }, false);
 
-            var t = $("div:jqmData(role='page')");
-            console.log("test");
-
             $("div:jqmData(role='page')").on('pagehide',function(){
                 controller.helper.viewChange = this.id;
                 console.log('view changed ' + controller.map.height + ", " + controller.map.width);
                 controller.helper.rotateScreen(400);
-//                if(controller.map.height == 0){ console.log('yo')
-//                    setTimeout(function(){
-//                        controller.map.height = 900;
-//                        controller.map.width = 800;
-//
-//                        controller.map.reposition();
-//                        controller.map.resize();
-//                    }, 750);
-
-//                }
             });
 
         });
     });
 
+    controller.timeoutCurrentPoschange = (function(){
+        controller.helper.timeoutCurrentPos = $("#timeout-current-pos").val();
+        console.log(controller.helper.timeoutCurrentPos);
+    });
 
     controller.restartGeo = (function restartGeo(){
         var test = confirm("Restart Geolocation?");
         if(test){
-            controller.helper.startGeolocation();
+            var maxAgeCurrentPos = $("#max-age-current-pos").val();
+            var timeoutCurrentPos = $("#timeout-current-pos").val();
+            var maxAge = $("#max-age-watch-pos").val();
+            var timeout = $("#timeout-watch-pos").val();
+            if(controller.isNumber(maxAgeCurrentPos) && controller.isNumber(timeoutCurrentPos) &&
+                controller.isNumber(maxAge) && controller.isNumber(timeout)){
+                    controller.helper.maxAgeCurrentPos = maxAgeCurrentPos;
+                    controller.helper.timeoutCurrentPos = timeoutCurrentPos;
+                    controller.helper.timeout = timeout;
+                    controller.helper.maximumAge = maxAge;
+                    controller.helper.startGeolocation();
+            }
+            else{
+                alert("Check inputs they must be numeric.")
+            }
         }
     });
 
@@ -236,82 +242,8 @@
         }
     });
 
-    controller.checkboxMaxAgeHandler = (function(evt){
-
-        setTimeout(function(){
-            if(evt.target.id == "checkbox-max-age"){
-                if($("checkbox-max-age").is(":checked")){
-                    controller.helper.maximumAge = Infinity;
-                }
-                else{
-                    var sliderMaxAge = $("#slider-max-age")[0].value;
-                    var minMilli = $("#slider-min-milli").val();
-                    if(minMilli == "millis"){
-                        sliderMaxAge * 1000;
-                    }
-                    else{
-                        sliderMaxAge * 60000;
-                    }
-
-                    controller.helper.maximumAge = sliderMaxAge;
-                }
-
-                controller.restartGeo();
-            }
-        },450);
-    });
-
-    controller.geoMaxAgeChangeHandler = (function(evt){
-
-        if(evt.target.id == "slider-max-age")
-        {
-            controller.helper.maximumAge = evt.target.value;
-            controller.restartGeo();
-        }
-    });
-
-    controller.toggleMaxAge = (function(evt){
-        var q = $("#slider-max-age");
-        var sliderMaxAge = $("#slider-max-age")[0].value;
-
-        if(evt.target.id == "slider-min-milli" && evt.target.value == "millis")
-        {
-            $("#label-geo-max-age").text("Geolocation maximumAge (x1000)");
-            controller.helper.maximumAge = sliderMaxAge * 1000;
-        }
-        else if(evt.target.id == "slider-min-milli" && evt.target.value == "mins"){
-            $("#label-geo-max-age").text("Geolocation maximumAge (mins)");
-            controller.helper.maximumAge = sliderMaxAge * 60000;
-        }
-
-        controller.restartGeo();
-
-    });
-
-
-    controller.toggleTimeout = (function(evt){
-        var sliderTimeout = $("#slider-timeout")[0].value;
-        if(evt.target.id == "slider-timeout-min-milli" && evt.target.value == "millis")
-        {
-            $("#label-geo-timeout").text("Geolocation timeout (x1000)");
-            controller.helper.timeout = sliderTimeout * 1000;
-        }
-        else if(evt.target.id == "slider-timeout-min-milli" && evt.target.value == "mins"){
-            $("#label-geo-timeout").text("Geolocation timeout (mins)");
-            controller.helper.timeout = sliderTimeout;
-        }
-
-        controller.restartGeo();
-    });
-
-    controller.geoTimeoutChangeHandler = (function(evt){
-
-        if(evt.target.id == "slider-timeout")
-        {
-            this.helper.timeout = evt.target.value;
-
-            controller.restartGeo();
-        }
+    controller.isNumber = (function(value){
+        return !isNaN(parseFloat(value)) && isFinite(value);
     });
 
     controller.showLocation = (function(){
@@ -353,6 +285,15 @@
                 controller.helper.setHighAccuracy(true);
             }
         },500);
+    });
+
+    controller.toggleErrorAlerts = (function(evt){
+        if(evt.target.id == "slider-handle-errs" && evt.target.value == "on"){
+            controller.helper.useAlerts = true;
+        }
+        else{
+            controller.helper.useAlerts = false;
+        }
     });
 
     /**

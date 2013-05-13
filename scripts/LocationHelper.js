@@ -39,15 +39,29 @@ var LocationHelper = function(/* esri.Map */ map){
      */
     this.accumulate = true;
     /**
-     * Geolocation timeout property
+     * Geolocation timeout property for watchPosition
+     * Default = 60000
      * @type {number}
      */
-    this.timeout = 15000;
+    this.timeout = 60000;
     /**
-     * Geolocation maximumAge property
+     * Geolocation maximumAge property for watchPosition
+     * Default = 60000
      * @type {number}
      */
     this.maximumAge = 60000;
+    /**
+     * Geolocation timeout property for currentPosition
+     * Default = 60000
+     * @type {number}
+     */
+    this.timeoutCurrentPos = 60000;
+    /**
+     * Geolocation maximumAge property for currentPosition.
+     * Default = 60000
+     * @type {number}
+     */
+    this.maxAgeCurrentPos = 60000;
     /**
      * Required
      * @type {esri.Map}
@@ -93,7 +107,11 @@ var LocationHelper = function(/* esri.Map */ map){
      * @type {int}
      */
     this.zoomLevel = 14;
-
+    /**
+     * If set to false then alerts will be written to the console.
+     * @type {boolean}
+     */
+    this.useAlerts = true;
     /**
      * Local Storage ENUMs
      * @type {Function}
@@ -104,7 +122,9 @@ var LocationHelper = function(/* esri.Map */ map){
             LAT:"lat",
             LON:"lon",
             MAP_WIDTH:"map_width",
-            MAP_HEIGHT:"map_height"
+            MAP_HEIGHT:"map_height",
+            PORTRAIT:"portrait",
+            LANDSCAPE:"landscape"
         }
 
         return values;
@@ -137,7 +157,7 @@ LocationHelper.prototype.startGeolocation = function(){
         try{
             localStorage.setItem(this.localStorageEnum().MAP_WIDTH,this.mapDiv.width());
             localStorage.setItem(this.localStorageEnum().MAP_HEIGHT,this.mapDiv.height());
-            window.innerHeight > window.innerWidth ? this._orientation = "portrait" : this._orientation = "landscape";
+            window.innerHeight > window.innerWidth ? this._orientation = this.localStorageEnum().PORTRAIT : this._orientation = this.localStorageEnum().LANDSCAPE;
         }
         catch(err){
             console.log(err.message);
@@ -153,7 +173,11 @@ LocationHelper.prototype.startGeolocation = function(){
 
             navigator.geolocation.getCurrentPosition(
                 _processGeolocationResult.bind(this)/* use bind() to maintain scope */,
-                _html5Error
+                _html5Error,
+                {
+                    maximumAge:this.maxAgeCurrentPos,
+                    timeout:this.timeoutCurrentPos
+                }
             );
 
             this._watchID = navigator.geolocation.watchPosition(
@@ -307,7 +331,10 @@ LocationHelper.prototype.startGeolocation = function(){
                 error_value = "TIMEOUT";
                 break;
         }
-        alert('There was a problem retrieving your location: ' + error_value);
+
+        this.useAlerts ?
+            alert('There was a problem retrieving your location: ' + error_value) :
+            console.log('There was a problem retrieving your location: ' + error_value);
     }
 
 }
@@ -401,7 +428,7 @@ LocationHelper.prototype.rotateScreen = (function(value){
             setTimeout((function(){
                 if(this._map != null && this._webMercatorMapPoint != null){
                     if(this._map.height == 0 || this._map.width == 0){
-                        if(this._orientation == "portrait")
+                        if(this._orientation == this.localStorageEnum().PORTRAIT)
                         {
                             this._map.width = localStorage.getItem(this.localStorageEnum().MAP_WIDTH);
                             this._map.height = localStorage.getItem(this.localStorageEnum().MAP_HEIGHT);

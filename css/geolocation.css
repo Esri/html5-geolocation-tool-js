@@ -33,7 +33,7 @@ html,body, div[data-role ="page"] {
     /*top: 0px;*/
 	z-index:1;
 }
-#settings-border1{
+.settings-border1{
     border-color: #707070;
     border-width: 1px;
     border-style: solid;
@@ -42,6 +42,19 @@ html,body, div[data-role ="page"] {
     border-radius: 10px;
     margin: 15px;
     overflow: auto;
+}
+.settings-input{
+    width: 50%;
+}
+.settings-label{
+    width: 100%;
+    text-align: center;
+    color: blue;
+}
+.settings-label2{
+    width: 100%;
+    text-align: center;
+    color: red;
 }
 #geo-indicator{
     color: red;
