@@ -1,7 +1,7 @@
 html5-geolocation-demo
 ======================
 
-Use this fun jQuery Mobile web app to test HTML5 on different devices. It lets you track your location as well as play with the different HTML5 Geolocation properties.
+Use this fun jQuery Mobile web app to test HTML5 on different devices. It lets you track your location as well as play with the different HTML5 Geolocation properties. 
 
 Main View:
 
