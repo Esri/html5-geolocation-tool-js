@@ -1,30 +1,32 @@
-html5-geolocation-demo
-======================
+html5-geolocation-tool-js
+=========================
 
-Use this fun jQuery Mobile web app to test HTML5 on different devices. It lets you track your location as well as play with the different HTML5 Geolocation properties. 
+Use this fun jQuery Mobile web app to test HTML5 geolocation on different devices. It lets you track your location as well as play with the different HTML5 Geolocation properties. This can be used on a desktop browser, mobile browser or within a PhoneGap project.
 
 Main View:
 
-![App](https://raw.github.com/andygup/html5-geolocation-demo/master/html5geolocation_downtown_denver_360w.png)
+![App](https://raw.github.com/Esri/html5-geolocation-tool-js/master/html5geolocation_downtown_denver_360w.png)
 
 Settings View:
 
-![App](https://raw.github.com/andygup/html5-geolocation-demo/master/html5geolocation_downtown_denver_settings_360w.png)
+![App](https://raw.github.com/Esri/html5-geolocation-tool-js/master/html5geolocation_downtown_denver_settings_360w.png)
 
-Settings View:
+Settings View (cont'd):
 
-![App](https://raw.github.com/andygup/html5-geolocation-demo/master/html5geolocation_downtown_denver_settings2_360w.png)
+![App](https://raw.github.com/Esri/html5-geolocation-tool-js/master/html5geolocation_downtown_denver_settings2_360w.png)
 
 ## Features
 
-* Maps Network and GPS locations.
-* Let's you configure and try out different scenarios.
-* Access configuration via the application settings menu.
+* Displays location on map.
+* Displays HTML5 geolocation properties (e.g. lat/lon, timestamp, etc)
+* Let's you configure and try out different scenarios by changing the geolocation properties.
+* Modify geolocation properties via the Settings menu.
 
 ## Requirements
 
-* Laptop for smartphone browser
+* Internet browser: desktop, laptop, phone or tablet
 * Mapping Library [ArcGIS API for JavaScript](http://developers.arcgis.com/en/javascript/jssamples/)
+* Internet connection by ethernet, cellular network and/or Wifi
 * Some experience with HTML/JavaScript.
 
 ## Licensing
@@ -44,5 +46,5 @@ limitations under the License.
 
 A copy of the license is available in the repository's [license.txt]( https://raw.github.com/Esri/android-gps-test-tool/master/license.txt) file.
 
-[](Esri Tags: JavaScript GPS Test ArcGIS Location Tools)
+[](Esri Tags: JavaScript HTML5 GPS Test ArcGIS Location Tools)
 [](Esri Language: JavaScript)

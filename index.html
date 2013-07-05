@@ -328,11 +328,13 @@
 
         controller.map.addLayer(controller._locatorMarkerGraphicsLayer);
 
-        dojo.connect(controller.map, "onZoomEnd", function (extent,zoom,anchor,level){
+        //Listen for map zoom end events
+        controller._on(controller.map, "zoom-end", function (extent,zoom,anchor,level){
             controller.zoomLevel = level;
         })
 
-        dojo.connect(controller.map, "onLoad", function () {
+        //Listen for when the map loads
+        controller._on(controller.map,"load", function () {
 
             //Adjust the map's zoom slider
             var zoom_slider_left = parseFloat($('#map_zoom_slider').css('left'));
@@ -352,6 +354,8 @@
 
             }
 
+            //Handle orientation events to allow for resizing the map and working around
+            //jQuery mobile bugs related to how and when the view settles after such an event
             var supportsOrientationChange = "onorientationchange" in window,
                     orientationEvent = supportsOrientationChange ? "orientationchange" : "resize";
 
@@ -369,6 +373,10 @@
         });
     });
 
+    /**
+     * Not currently used
+     * @type {Function}
+     */
     controller.timeoutCurrentPoschange = (function(){
         controller.timeoutCurrentPos = $("#timeout-current-pos").val();
         console.log(controller.timeoutCurrentPos);
@@ -794,7 +802,7 @@
     });
 
     /**
-     * Gets a CSV file compiled from the geolocation service including
+     * Gets a CSV string compiled from the geolocation service that includes
      * date,lat,lon,accuracy,high_accuracy_boolean,altitude,heading,speed,
      * altitude_accuracy,interval_time,total_elapsed_time
      * @returns {string}
@@ -804,20 +812,21 @@
     });
 
     /**
-     * Public function for emailing a CSV file containing geolocation service information.
+     * Public function for emailing a CSV string containing geolocation service information.
      */
    controller.utils.sendEmail = (function(){
         window.open('mailto:'+ controller._MAIL_TO_ADDRESS +'?subject=HTML5 Accuracy Data&body=' +
                 encodeURIComponent(controller.utils.getAccuracyCSV()));
     });
 
-    require(["esri/map","esri/symbols/PictureMarkerSymbol","esri/graphic","esri/geometry/Point"],
-            function(Map,PictureMarkerSymbol,Graphic,Point) {
+    require(["esri/map","esri/symbols/PictureMarkerSymbol","esri/graphic","esri/geometry/Point","dojo/on"],
+            function(Map,PictureMarkerSymbol,Graphic,Point,on) {
 
                 /////
                 // PRIVATE Variables
                 /////
 
+                controller._on = on;   //event listeners are set by 'on'
                 controller._MAIL_TO_ADDRESS = "your_email_address_goes_here";
                 controller._supportsLocalStorage = false;
                 controller._watchID = null;
