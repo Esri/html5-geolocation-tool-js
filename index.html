@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+    <title>HTML 5 - Geolocation</title>
+    <!-- http://jquerymobile.com/blog/2013/04/10/announcing-jquery-mobile-1-3-1/#download -->
+    <!-- http://code.jquery.com/ -->
+    <link rel="stylesheet" href="http://serverapi.arcgisonline.com/jsapi/arcgis/3.5/js/dojo/dijit/themes/claro/claro.css">
+    <link rel="stylesheet" href="http://serverapi.arcgisonline.com/jsapi/arcgis/3.5/js/esri/css/esri.css">
+    <link rel="stylesheet" href="css/jquery.mobile-1.3.1.min.css" />
+    <script type="text/javascript" src="scripts/jquery-1.9.1.min.js"></script>
+    <script type="text/javascript" src="scripts/jquery.mobile-1.3.1.min.js"></script>
+    <script type="text/javascript" src="http://serverapi.arcgisonline.com/jsapi/arcgis/3.5compact/"></script>
+    <style type="text/css">
+        html,body, div[data-role ="page"] {
+        height: 100%;
+        width: 100%;
+        margin: 0px;
+        padding: 0px;
+    
+        }
+        .ui-content{
+            height: 100%;
+            width: 100%;
+            margin: 0px;
+            padding: 0px;
+        }
+        .settings{
+            margin-left: auto;
+            margin-right: auto;
+            text-align:center;
+            width: 100%;
+        }
+        #map {
+            position: absolute;
+            background-color: #EEEEDD;
+            height: 100%;
+            width: 100%;
+            padding: 0px;
+            z-index: 0;
+        
+        }
+        
+        #div1{
+            position:absolute;
+            margin: 5px;
+            /*top: 0px;*/
+            z-index:1;
+        }
+        .settings-border1{
+            border-color: #707070;
+            border-width: 1px;
+            border-style: solid;
+            -webkit-border-radius: 10px;
+            -moz-border-radius: 10px;
+            border-radius: 10px;
+            margin: 15px;
+            overflow: auto;
+        }
+        .settings-input{
+            width: 50%;
+        }
+        .settings-label{
+            width: 100%;
+            text-align: center;
+            color: blue;
+        }
+        .settings-label2{
+            width: 100%;
+            text-align: center;
+            color: red;
+        }
+        #geo-indicator{
+            color: red;
+        }
+        #emailDiv{
+            width: 200px;
+        }
+        #table1{
+            color: #FFFFFF;
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #000000;
+            opacity: 0.6;
+        
+            -webkit-border-radius: 10px;
+            -moz-border-radius: 10px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body>
+<div data-role="page" id="home">
+
+    <div data-theme="a" data-role="header" data-position="fixed">
+        <h3>HTML5 Geolocation</h3>
+        <a href="#" data-role="button" data-icon="grid" data-iconpos="notext" onclick="controller.showLocation();">Location</a>
+        <a href="#settings" data-role="button" data-icon="gear" class="ui-btn-right" data-iconpos="notext">Settings</a>
+    </div>
+
+    <div id="div1">
+        <table id="table1" border="1">
+            <tr>
+                <td>
+                    <div id="altitude">Alt: n/a</div>
+                </td>
+                <td colspan="2">
+                    <div id="location">0.00, 0.00</div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <div id="speed">Spd: n/a</div>
+                </td>
+                <td colspan="2">
+                    <div id="timestamp">0:00:00</div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <div id="heading">Hdg: n/a</div>
+                </td>
+                <td>
+                    <div id="accuracy">Acc: 0m</div>
+                </td>
+                <td>
+                    <div id="geo-indicator">Geo: OFF</div>
+                </td>
+            </tr>
+
+        </table>
+    </div>
+
+    <div data-role="content">
+        <div id="map"></div>
+    </div>
+
+</div>
+
+<div data-role="page" id="settings" data-add-back-btn="true">
+    <div data-role="header">
+        <h1>Settings</h1>
+    </div>
+    <div data-role="content">
+
+        <div class="settings" style="margin-top: 15px;">
+            <div>Geolocation:</div>
+            <select name="slider" id="slider-geo-on-off" data-role="slider" data-theme="a">
+                <option value="off">Off</option>
+                <option value="on" selected>On</option>
+            </select>
+        </div>
+        <div class="settings">
+            <div>High Accuracy:</div>
+            <select name="slider" id="slider-high-accuracy" data-role="slider" data-theme="a">
+                <option value="off">Off</option>
+                <option value="on" selected>On</option>
+            </select>
+        </div>
+        <div class="settings-border1">
+            <div class="settings-label">Current Position</div>
+            <div data-role="fieldcontain">
+                <label for="max-age-current-pos">&nbsp;&nbsp;maxAge (ms):</label>
+                <input type="text" name="currentPosMaxAge" id="max-age-current-pos" value="60000"  />
+            </div>
+            <div data-role="fieldcontain">
+                <label for="timeout-current-pos">&nbsp;&nbsp;timeout (ms):</label>
+                <input type="text" name="currentPosTimeout" id="timeout-current-pos" value="60000"  />
+            </div>
+            <div class="settings" style="width: 200px; margin-top: 15px;">
+                <button data-theme="b" onclick="controller.restartGeo()" data-mini="true">Restart Geo</button>
+            </div>
+        </div>
+        <div class="settings-border1">
+            <div class="settings-label2">Watch Position</div>
+            <div data-role="fieldcontain">
+                <label for="max-age-watch-pos">&nbsp;&nbsp;maxAge (ms):</label>
+                <input type="text" name="currentPosMaxAge" id="max-age-watch-pos" value="60000"  />
+            </div>
+            <div data-role="fieldcontain">
+                <label for="timeout-watch-pos">&nbsp;&nbsp;timeout (ms):</label>
+                <input type="text" name="currentPosTimeout" id="timeout-watch-pos" value="60000"  />
+            </div>
+            <div class="settings" style="width: 200px; margin-top: 15px;">
+                <button data-theme="b" onclick="controller.restartGeo()" data-mini="true">Restart Geo</button>
+            </div>
+        </div>
+        <div class="settings">
+            <div>Accumulate map points:</div>
+            <select name="slider" id="slider-accumulate-pts" data-role="slider" data-theme="a">
+                <option value="off">Off</option>
+                <option value="on" selected>On</option>
+            </select>
+        </div>
+        <div class="settings">
+            <div>Handle Errors using alerts:</div>
+            <select name="slider" id="slider-handle-errs" data-role="slider" data-theme="a">
+                <option value="off">Off</option>
+                <option value="on" selected>On</option>
+            </select>
+        </div>
+        <div id="emailDiv" class="settings" style="width: 200px; margin-top: 15px;">
+            <button id="sendEmailButton" data-theme="b" onclick="controller.utils.sendEmail()">Email CSV</button>
+        </div>
+    </div>
+</div>
+
+
+<script type="text/javascript">
+
+    $('document').ready(function(){
+        $("#slider-geo-on-off").on("slidestop",controller.shutOffGeolocation);
+        $("#slider-high-accuracy").on("slidestop",controller.toggleHighAccuracy);
+        $("#slider-accumulate-pts").on("slidestop",controller.toggleAccumulate);
+        $("#slider-handle-err").on("slidestop",controller.toggleErrorAlerts)
+    })
+    
+    //set deviceReady flag if phonegap is ready
+    $('document').ready( function(){controller.deviceReady = true});
+
+    /**
+     * View Controller
+     * @type {Object}
+     */
+    var controller = controller || {};
+
+    /////
+    // PUBLIC Variables
+    /////
+
+    controller.map = null;
+    controller.helper = null;
+    controller.deviceReady = false;
+    controller.utils = {};
+
+    /**
+     * A property indicating a reference to the current view.
+     * Default = null
+     * @type {String}
+     */
+    controller.viewChange = null;
+    /**
+     * Allows points to accumulate on map. Default is true.
+     * @type {boolean}
+     */
+    controller.accumulate = true;
+    /**
+     * Geolocation timeout property for watchPosition
+     * Default = 60000
+     * @type {number}
+     */
+    controller.timeout = 60000;
+    /**
+     * Geolocation maximumAge property for watchPosition
+     * Default = 60000
+     * @type {number}
+     */
+    controller.maximumAge = 60000;
+    /**
+     * Geolocation timeout property for currentPosition
+     * Default = 60000
+     * @type {number}
+     */
+    controller.timeoutCurrentPos = 60000;
+    /**
+     * Geolocation maximumAge property for currentPosition.
+     * Default = 60000
+     * @type {number}
+     */
+    controller.maxAgeCurrentPos = 60000;
+    /**
+     * Sets the map zoom level. Default = 14;
+     * @type {int}
+     */
+    controller.zoomLevel = 14;
+    /**
+     * If set to false then alerts will be silent and errors written to the console.
+     * @type {boolean}
+     */
+    controller.useAlerts = true;
+    /**
+     * A reference to the Geolocation On/Off slider
+     * @type {slider}
+     */
+    controller.geoSliderOnOff = null;
+
+    /**
+     * Local Storage ENUMs
+     * @type {Object}
+     */
+    controller.localStorageEnum = (function(){
+        var values = {
+            ZOOM_LEVEL:"zoom_level",
+            LAT:"lat",
+            LON:"lon",
+            MAP_WIDTH:"map_width",
+            MAP_HEIGHT:"map_height",
+            PORTRAIT:"portrait",
+            LANDSCAPE:"landscape"
+        }
+
+        return values;
+    });
+
+    /**
+     * Does browser support localStorage?
+     * Always validate HTML5 functionality :-)
+     */
+    (function (){
+        var support = null;
+        try {
+            support = 'localStorage' in window && window['localStorage'] !== null;
+        } catch (e) {
+            support = false;
+        }
+        controller._supportsLocalStorage = support;
+    }).bind(this)();
+
+    controller.init = (function() {
+
+        controller.map = new esri.Map("map",{
+            basemap: "topo",
+            center: [-98.6, 39.8],
+            slider: true,
+            zoom: 2
+        });
+
+        controller.map.addLayer(controller._locatorMarkerGraphicsLayer);
+
+        //Listen for map zoom end events
+        controller._on(controller.map, "zoom-end", function (extent,zoom,anchor,level){
+            controller.zoomLevel = level;
+        })
+
+        //Listen for when the map loads
+        controller._on(controller.map,"load", function () {
+
+            //Adjust the map's zoom slider
+            var zoom_slider_left = parseFloat($('#map_zoom_slider').css('left'));
+            var zoom_slider_width = parseFloat($('#map_zoom_slider').css('width'));
+            $('#div1').css('left',zoom_slider_left * 2 + zoom_slider_width + "px");
+
+
+            //Some browsers don't show full height after onLoad
+            controller.map.reposition();
+            controller.map.resize();
+
+            if(controller.deviceReady == true){
+                controller.startGeolocation();
+            }
+            else{
+                console.log("LocationHelper.js: device not ready - unable to start geolocation.");
+
+            }
+
+            //Handle orientation events to allow for resizing the map and working around
+            //jQuery mobile bugs related to how and when the view settles after such an event
+            var supportsOrientationChange = "onorientationchange" in window,
+                    orientationEvent = supportsOrientationChange ? "orientationchange" : "resize";
+
+            window.addEventListener(orientationEvent, function () {
+                controller.rotateScreen(400,true);
+            }, false);
+
+            //Fix bug in jQuery that destroys map when child view is rotated
+            $("div:jqmData(role='page')").on('pagehide',function(){
+                controller.viewChange = this.id;
+                console.log('view changed ' + controller.map.height + ", " + controller.map.width);
+                controller.rotateScreen(400,true);
+            });
+
+        });
+    });
+
+    /**
+     * Not currently used
+     * @type {Function}
+     */
+    controller.timeoutCurrentPoschange = (function(){
+        controller.timeoutCurrentPos = $("#timeout-current-pos").val();
+        console.log(controller.timeoutCurrentPos);
+    });
+
+    controller.restartGeo = (function restartGeo(){
+        var test = confirm("Restart Geolocation?");
+        if(test){
+            var maxAgeCurrentPos = $("#max-age-current-pos").val();
+            var timeoutCurrentPos = $("#timeout-current-pos").val();
+            var maxAge = $("#max-age-watch-pos").val();
+            var timeout = $("#timeout-watch-pos").val();
+            if(controller.isNumber(maxAgeCurrentPos) && controller.isNumber(timeoutCurrentPos) &&
+                controller.isNumber(maxAge) && controller.isNumber(timeout)){
+                    controller.maxAgeCurrentPos = maxAgeCurrentPos;
+                    controller.timeoutCurrentPos = timeoutCurrentPos;
+                    controller.timeout = timeout;
+                    controller.maximumAge = maxAge;
+                    controller.startGeolocation();
+            }
+            else{
+                alert("Check all your inputs they must be numeric.")
+            }
+        }
+    });
+
+    controller.toggleAccumulate = (function(evt){
+        if(evt.target.id == "slider-accumulate-pts" && evt.target.value == "on"){
+            controller.accumulate = true;
+        }
+        else{
+            controller.accumulate = false;
+        }
+    });
+
+    controller.isNumber = (function(value){
+        return !isNaN(parseFloat(value)) && isFinite(value);
+    });
+
+    controller.showLocation = (function(){
+        if($('#div1').is(':visible') == false || $('#div1').is(':hidden')){
+            $('#div1').show();
+        }
+        else{
+            $('#div1').hide();
+        }
+
+    });
+
+    /**
+     * Public function for shutting down the geolocation service.
+     */
+    controller.shutOffGeolocation = (function(evt){
+
+        if(evt.target.id == "slider-geo-on-off" && evt.target.value == "on"){
+            controller.restartGeo();
+        }
+        else{
+            controller.stopGeolocation();
+            alert("Geolocation has been shutoff");
+        }
+    });
+
+    /**
+     * Public function for toggling the geolocation high-accuracy property on/off
+     */
+    controller.toggleHighAccuracy = (function(evt){
+
+        if(evt.target.id == "slider-high-accuracy" && evt.target.value == "on"){
+            controller.setHighAccuracy(true);
+        }
+        else{
+            controller.setHighAccuracy(false);
+        }
+
+    });
+
+    controller.toggleErrorAlerts = (function(evt){
+        if(evt.target.id == "slider-handle-errs" && evt.target.value == "on"){
+            controller.useAlerts = true;
+        }
+        else{
+            controller.useAlerts = false;
+        }
+    });
+
+    /**
+     * Turns on the geolocation capabilities.
+     */
+    controller.startGeolocation = function(){
+
+        var _dateStart = new Date();
+        var _previousDate = null;
+
+        if(controller._supportsLocalStorage){
+            try{
+                localStorage.setItem(controller.localStorageEnum().MAP_WIDTH,$("#map").width());
+                localStorage.setItem(controller.localStorageEnum().MAP_HEIGHT,$("#map").height());
+                window.innerHeight > window.innerWidth ?
+                        controller._orientation = controller.localStorageEnum().PORTRAIT :
+                        controller._orientation = controller.localStorageEnum().LANDSCAPE;
+            }
+            catch(err){
+                console.log("_supportsLocationStorage: " + err.message);
+            }
+        }
+
+        try{
+            if (navigator.geolocation) {
+                console.log("setHighAccuracy = " + controller._setHighAccuracy);
+
+                navigator.geolocation.getCurrentPosition(
+                        _processGeolocationResult.bind(this)/* use bind() to maintain scope */,
+                        _html5Error.bind(this),
+                        {
+                            maximumAge: controller.maxAgeCurrentPos,
+                            timeout: controller.timeoutCurrentPos,
+                            enableHighAccuracy: controller._setHighAccuracy
+                        }
+                );
+
+                controller._watchID = navigator.geolocation.watchPosition(
+                        _processGeolocationResult.bind(this),
+                        _html5Error.bind(this),
+                        {
+                            timeout: controller.timeout,
+                            enableHighAccuracy: controller._setHighAccuracy,
+                            maximumAge: controller.maximumAge
+                        }
+                );
+
+                //For more info on maximumAge (milliseconds): http://dev.w3.org/geo/api/spec-source.html#max-age
+                //For more info on timeout (milliseconds): http://dev.w3.org/geo/api/spec-source.html#timeout
+                //For more info on enableHighAccuracy: http://dev.w3.org/geo/api/spec-source.html#high-accuracy
+            }
+            else {
+                alert("Sorry, your browser does not support geolocation");
+            }
+        }
+        catch(err){
+            alert("Unable to start geolocation. See console.log for message.")
+            console.log("startGeolocation: " + err.message);
+        }
+
+        /**
+         * Post-process the results from a geolocation position object.
+         * @param position
+         * @private
+         */
+        function _processGeolocationResult(position) {
+
+            var html5Lat = position.coords.latitude; //Get latitude
+            var html5Lon = position.coords.longitude; //Get longitude
+            var html5TimeStamp = position.timestamp; //Get timestamp
+            var html5Accuracy = position.coords.accuracy; 	//Get accuracy in meters
+            var html5Heading = position.coords.heading;
+            var html5Speed = position.coords.speed;
+            var html5Altitude = position.coords.altitude;
+
+            console.log("success " + html5Lat + ", " + html5Lon);
+            $("#geo-indicator").text("Geo: ON");
+            $("#geo-indicator").css('color','green');
+
+            controller._displayGeocodedLocation(position);
+
+            if (position.coords.latitude != null && position.coords.longitude != null) {
+                //zoomToLocation(html5Lat, html5Lon);
+
+                //Don't allow string to get beyond certain length.
+                //Otherwise you'll create a huge memory leak. :-)
+                if(controller._accuracyDataCSV.length < 50000){
+
+                    var newDateDiff = null;
+                    var ms = null;
+                    var dateNow = new Date();
+                    var totalElapsedTime =  _getTimeDifference(new Date(Math.abs(dateNow.getTime() - _dateStart.getTime())));
+
+                    _previousDate == null ?
+                            newDateDiff = new Date(Math.abs(dateNow.getTime() - _dateStart.getTime())) :
+                            newDateDiff = new Date(Math.abs(dateNow.getTime() - _previousDate.getTime()));
+
+                    _previousDate = new Date();
+
+                    var dateResultString = _getTimeDifference(newDateDiff);
+
+                    controller._accuracyDataCSV = controller._accuracyDataCSV + Date(html5TimeStamp).toLocaleString() +
+                            "," + html5Lat +
+                            "," + html5Lon +
+                            "," + html5Accuracy +
+                            "," + controller._setHighAccuracy +
+                            "," + html5Altitude +
+                            "," + html5Heading +
+                            "," + html5Speed +
+                            "," + position.coords.altitudeAccuracy +
+                            "," + dateResultString +
+                            "," + totalElapsedTime +
+                            ",\r\n";
+                }
+                else{
+                    console.log("Truncating CSV string. It is too long");
+                }
+
+                if(html5Lat != 0){
+                    //var wgsPt = new esri.geometry.Point(html5Lon,html5Lat);
+                    controller._mostRecentLocation =  new esri.geometry.Point(html5Lon,html5Lat);
+                    //this._map.centerAndZoom(this._mostRecentLocation, 14);
+                    controller._showLocation(html5Lat,html5Lon,controller._mostRecentLocation);
+
+                    if(controller._supportsLocalStorage){
+                        localStorage.setItem(controller.localStorageEnum().LAT,html5Lat);
+                        localStorage.setItem(controller.localStorageEnum().LON,html5Lon);
+                        localStorage.setItem(controller.localStorageEnum().ZOOM_LEVEL,controller.map.getZoom());
+                    }
+                    console.log('false, ' +
+                            localStorage.getItem(controller.localStorageEnum().MAP_WIDTH) + ", " +
+                            localStorage.getItem(controller.localStorageEnum().MAP_HEIGHT) + ", " +
+                            localStorage.getItem(controller.localStorageEnum().ZOOM_LEVEL) + ", " +
+                            this.map.getZoom()
+                    );
+                }
+            }
+        }
+
+        /**
+         * Calculate HH:MM:SS:MS from a given Date in millis
+         * @param date
+         * @returns {string}
+         * @private
+         */
+        function _getTimeDifference(/* Date */ date){;
+            var msec = date;
+            var hh = Math.floor(msec / 1000 / 60 / 60);
+            msec -= hh * 1000 * 60 * 60;
+            var mm = Math.floor(msec / 1000 / 60);
+            msec -= mm * 1000 * 60;
+            var ss = Math.floor(msec / 1000);
+            msec -= ss * 1000;
+
+            hh = hh < 10 ? "0" + hh : hh;
+            mm = mm < 10 ? "0" + mm : mm;
+            ss = ss < 10 ? "0" + ss : ss;
+            msec = msec < 10 ? "0" + msec : msec;
+
+            console.log("time: " + hh + ":" + mm + ":" + ss + ":" + msec);
+
+            return hh + ":" + mm + ":" + ss + ":" + msec;
+        }
+
+        /**
+         * Handle geolocation service errors
+         * @param error
+         * @private
+         */
+        function _html5Error(error) {
+            var error_value = "null";
+
+            switch(error.code){
+                case 1:
+                    error_value = "PERMISSION_DENIED";
+                    this.geoSliderOnOff.val("off");
+                    break;
+                case 2:
+                    error_value = "POSITION_UNAVAILABLE";
+                    break;
+                case 3:
+                    //Read more at http://dev.w3.org/geo/api/spec-source.html#timeout
+                    error_value = "TIMEOUT";
+                    break;
+            }
+
+            controller.useAlerts == true ?
+                    alert('There was a problem retrieving your location: ' + error_value) :
+                    console.log('There was a problem retrieving your location: ' + error_value);
+        }
+
+    }
+
+    /**
+     * Write geolocation values to UX
+     * @param position
+     * @private
+     */
+    controller._displayGeocodedLocation = function(position) {
+        var altitude = "n/a";
+        if(position.coords.altitude != null) altitude = position.coords.altitude.toFixed(2) + "m";
+        var speed = "n/a";
+        if (position.coords.speed != null) (position.coords.speed * 3600 / 1000).toFixed(2) + "km/hr";
+        var heading = "n/a";
+        if (position.coords.heading != null) position.coords.heading.toFixed(2) + "deg";
+
+        $("#location").text(position.coords.latitude.toFixed(4) + ", " + position.coords.longitude.toFixed(4));
+        $("#altitude").text("Alt: " + altitude);
+        $("#speed").text("Spd: " + speed);
+        $("#heading").text("Hdg: " + heading);
+
+        //Tested on desktop IE9, Chrome 17, Firefox 10, Safari ?
+        //Mobile browser: Android 2.3.6
+        //There is a bug in Safari browsers on Mac that shows the year as 1981
+        //To get around the bug you could manually parse and then format the date. I chose not to for this demo.
+        var date = new Date(position.timestamp)
+        $("#timestamp").text(date.toLocaleString());
+        $("#accuracy").text("Acc: " + position.coords.accuracy.toFixed(2) + "m");
+
+    }
+
+    controller._showLocation = function(/* number */myLat,/* number */myLong,/* esri.geometry.Geometry */geometry) {
+
+        var myPositionSymbol = null;
+        var locatorSymbol = null;
+
+        if(window.devicePixelRatio >= 2){
+            myPositionSymbol = controller._pushPinLarge;
+            locatorSymbol = controller._locatorMarkerLarge;
+        }
+        else{
+            myPositionSymbol = controller._pushPinSmall;
+            locatorSymbol = controller._locatorMarkerSmall;
+        }
+
+        //    map.infoWindow.setTitle("HTML5 Location");
+        //    map.infoWindow.setContent('Lat : ' + myLat.toFixed(4) + ", " + ' Long: ' + myLong.toFixed(4));
+        //    map.infoWindow.resize(200,65);
+        //    map.infoWindow.show(mapPoint, esri.dijit.InfoWindow.ANCHOR_LOWERLEFT);
+
+        controller.map.graphics.clear();
+        controller.map.graphics.add(new esri.Graphic(geometry, myPositionSymbol));
+        controller.map.centerAndZoom(geometry, controller.zoomLevel);
+
+        if(controller.accumulate == true)controller._locatorMarkerGraphicsLayer.add(new esri.Graphic(geometry, locatorSymbol));
+
+    }
+
+    /**
+     * Executes a clearWatch() to cease all watchPosition() activity.
+     */
+    controller.stopGeolocation = (function(){
+        try{
+            navigator.geolocation.clearWatch(controller._watchID);
+            controller._watchID = null;
+            $("#geo-indicator").text("Geo: OFF");
+            $("#geo-indicator").css('color','red');
+        }
+        catch(err){
+            console.log("stopGeolocation error: " + err.toString());
+        }
+    });
+
+    /**
+     * RECOMMENDATION FOR PHONEGAP - set property in manifest to prevent screen rotation!
+     * Repositions the map after a screen rotation. Note there are bugs in jQuery
+     * related to screen rotation when you are in a child view.
+     * These bugs can affect the map and its associated properties.
+     * @param value Timer delay property in ms
+     * @param useLocalStore boolean sets whether or not to use localStorage values to recenter map.
+     */
+    controller.rotateScreen = (function(value,/* boolean */ useLocalStore){
+        if(typeof useLocalStore == 'undefined') useLocalStore = false;
+
+        console.log('rotateScreen, ' +
+                localStorage.getItem(controller.localStorageEnum().MAP_WIDTH) + ", " +
+                localStorage.getItem(controller.localStorageEnum().MAP_HEIGHT) + ", " +
+                localStorage.getItem(controller.localStorageEnum().ZOOM_LEVEL));
+
+        try{
+            if(controller.viewChange == null || controller.viewChange == "settings"){
+
+                var timeout = null;
+                value != "undefined" ? timeout = value : timeout = 500;
+                setTimeout((function(){
+                    if(controller.map != null && controller._mostRecentLocation != null){
+
+                        //NOTE: This attempts to fix a bug in jQuery where rotating
+                        //device from a child window resets map div values and other map properties.
+                        //TO-DO Still needs some tweaking -- not perfect.
+                        if(controller.map.height == 0 || controller.map.width == 0){
+                            if(useLocalStore == false){
+                                if(controller._orientation == controller.localStorageEnum().PORTRAIT)
+                                {
+                                    controller.map.width = localStorage.getItem(controller.localStorageEnum().MAP_WIDTH);
+                                    controller.map.height = localStorage.getItem(controller.localStorageEnum().MAP_HEIGHT);
+                                }
+                                else{
+                                    controller.map.width = localStorage.getItem(controller.localStorageEnum().MAP_HEIGHT);
+                                    controller.map.height = localStorage.getItem(controller.localStorageEnum().MAP_WIDTH);
+                                }
+
+                                controller.map.resize();
+                                controller.map.reposition();
+                                //map.width = screen.width;
+
+                                var wgsPt = new esri.geometry.Point(
+                                        localStorage.getItem(controller.localStorageEnum().LON),
+                                        localStorage.getItem(controller.localStorageEnum().LAT), new esri.SpatialReference({ wkid: 4326 }))
+
+                                controller.map.centerAndZoom(
+                                        esri.geometry.geographicToWebMercator(wgsPt),
+                                        localStorage.getItem(controller.localStorageEnum().ZOOM_LEVEL)
+                                );
+                            }
+                        }
+                        else{
+                            controller.map.resize();
+                            controller.map.reposition();
+
+                            if(useLocalStore == false){
+                                var wgsPt = new esri.geometry.Point(
+                                        localStorage.getItem(controller.localStorageEnum().LON),
+                                        localStorage.getItem(controller.localStorageEnum().LAT)
+                                );
+                                //map.width = screen.width;
+                                controller.map.centerAndZoom(esri.geometry.geographicToWebMercator(wgsPt), controller.zoomLevel);
+                            }
+                        }
+                    }
+
+                }).bind(this),timeout);
+            }
+        }
+        catch(err){
+            console.log("rotateScreen() error " + err.message);
+        }
+
+    });
+
+    /**
+     * Gets a CSV string compiled from the geolocation service that includes
+     * date,lat,lon,accuracy,high_accuracy_boolean,altitude,heading,speed,
+     * altitude_accuracy,interval_time,total_elapsed_time
+     * @returns {string}
+     */
+    controller.utils.getAccuracyCSV = (function(){
+        return controller._accuracyDataCSV;
+    });
+
+    /**
+     * Public function for emailing a CSV string containing geolocation service information.
+     */
+   controller.utils.sendEmail = (function(){
+        window.open('mailto:'+ controller._MAIL_TO_ADDRESS +'?subject=HTML5 Accuracy Data&body=' +
+                encodeURIComponent(controller.utils.getAccuracyCSV()));
+    });
+
+    require(["esri/map","esri/symbols/PictureMarkerSymbol","esri/graphic","esri/geometry/Point","dojo/on"],
+            function(Map,PictureMarkerSymbol,Graphic,Point,on) {
+
+                /////
+                // PRIVATE Variables
+                /////
+
+                controller._on = on;   //event listeners are set by 'on'
+                controller._MAIL_TO_ADDRESS = "your_email_address_goes_here";
+                controller._supportsLocalStorage = false;
+                controller._watchID = null;
+                controller._setHighAccuracy = true;
+                controller._mostRecentLocation = null;
+                controller._accuracyDataCSV = "Date,Lat,Long,Accuracy,High_accuracy_boolean,Altitude,Heading,Speed,Altitude_accuracy,Interval_time,Total_elapsed_time,\r\n";
+                controller._pushPinLarge = new esri.symbol.PictureMarkerSymbol("images/pushpin104x108.png", 104, 108);
+                controller._pushPinSmall = new esri.symbol.PictureMarkerSymbol("images/pushpin52x54.png", 48, 48);
+                controller._locatorMarkerLarge = new esri.symbol.SimpleMarkerSymbol(esri.symbol.SimpleMarkerSymbol.STYLE_DIAMOND,
+                        10,
+                        new esri.symbol.SimpleLineSymbol(esri.symbol.SimpleLineSymbol.STYLE_SOLID, new dojo.Color([0,0,0]), 1),
+                        new dojo.Color([255,255,0,0.5]));
+
+                controller._locatorMarkerSmall = new esri.symbol.SimpleMarkerSymbol(esri.symbol.SimpleMarkerSymbol.STYLE_DIAMOND,
+                        5,
+                        new esri.symbol.SimpleLineSymbol(esri.symbol.SimpleLineSymbol.STYLE_SOLID, new dojo.Color([0,0,0]), 1),
+                        new dojo.Color([255,255,0,0.5]));
+                controller._locatorMarkerGraphicsLayer = new esri.layers.GraphicsLayer();
+
+                controller.init();
+            }
+    );
+</script>
+</body>
+</html>
