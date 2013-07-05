@@ -5,15 +5,15 @@ Use this fun jQuery Mobile web app to test HTML5 geolocation on different device
 
 Main View:
 
-![App](https://raw.github.com/esri/html5-geolocation-tools-js/master/html5geolocation_downtown_denver_360w.png)
+![App](https://raw.github.com/Esri/html5-geolocation-tool-js/master/html5geolocation_downtown_denver_360w.png)
 
 Settings View:
 
-![App](https://raw.github.com/esri/html5-geolocation-tool-js/master/html5geolocation_downtown_denver_settings_360w.png)
+![App](https://raw.github.com/Esri/html5-geolocation-tool-js/master/html5geolocation_downtown_denver_settings_360w.png)
 
 Settings View (cont'd):
 
-![App](https://raw.github.com/esri/html5-geolocation-tool-js/master/html5geolocation_downtown_denver_settings2_360w.png)
+![App](https://raw.github.com/Esri/html5-geolocation-tool-js/master/html5geolocation_downtown_denver_settings2_360w.png)
 
 ## Features
 
