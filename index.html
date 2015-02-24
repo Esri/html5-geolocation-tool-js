@@ -27,7 +27,7 @@
             margin-left: auto;
             margin-right: auto;
             text-align:center;
-            width: 100%;
+            width: 800px;
         }
         #map {
             position: absolute;
@@ -42,7 +42,11 @@
             margin: 5px;
             /*top: 0px;*/
             z-index:1;
+            color: white;
             background-color: #000000 !important;
+        }
+        .tableData{
+            padding: 8px;
         }
         .settings-border1{
             border-color: #707070;
@@ -53,6 +57,10 @@
             border-radius: 10px;
             margin: 15px;
             overflow: auto;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 12px;
         }
         .settings-input{
             width: 50%;
@@ -97,29 +105,29 @@
     <div id="div1" class="tableDiv">
         <table id="table1" border="1">
             <tr>
-                <td>
+                <td class="tableData">
                     <div id="altitude">Alt: n/a</div>
                 </td>
-                <td colspan="2">
+                <td colspan="2" class="tableData">
                     <div id="location">0.00, 0.00</div>
                 </td>
             </tr>
             <tr>
-                <td>
+                <td class="tableData">
                     <div id="speed">Spd: n/a</div>
                 </td>
-                <td colspan="2">
+                <td colspan="2" class="tableData">
                     <div id="timestamp">0:00:00</div>
                 </td>
             </tr>
             <tr>
-                <td>
+                <td class="tableData">
                     <div id="heading">Hdg: n/a</div>
                 </td>
-                <td>
+                <td class="tableData">
                     <div id="accuracy">Acc: 0m</div>
                 </td>
-                <td>
+                <td class="tableData">
                     <div id="geo-indicator">Geo: OFF</div>
                 </td>
             </tr>
