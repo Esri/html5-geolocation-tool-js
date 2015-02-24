@@ -27,7 +27,6 @@
             margin-left: auto;
             margin-right: auto;
             text-align:center;
-            width: 800px;
         }
         #map {
             position: absolute;
@@ -211,6 +210,8 @@
 
 <script src="//code.jquery.com/jquery-1.9.1.min.js"></script>
 <script src="//code.jquery.com/mobile/1.3.2/jquery.mobile-1.3.2.min.js"></script>
+<script src="//esri.github.io/jquery-mobile-map-js/src/jQueryHelper.js"></script>
+
 <script src="http://js.arcgis.com/3.11/"></script>
 
 <script type="text/javascript">
@@ -238,6 +239,7 @@
     controller.map = null;
     controller.helper = null;
     controller.deviceReady = false;
+    controller.markerSymbol = null;
     controller.utils = {};
 
     /**
@@ -332,8 +334,6 @@
             zoom: 2
         });
 
-        controller.map.addLayer(controller._locatorMarkerGraphicsLayer);
-
         //Listen for map zoom end events
         controller._on(controller.map, "zoom-end", function (extent,zoom,anchor,level){
             controller.zoomLevel = level;
@@ -347,6 +347,9 @@
             var zoom_slider_width = parseFloat($('#map_zoom_slider').css('width'));
             $('#div1').css('left',zoom_slider_left * 2 + zoom_slider_width + "px");
 
+            // Initiate jQueryHelper library
+            // Auto-recenters on device rotation
+            controller.helper = new jQueryHelper(controller.map);
 
             //Some browsers don't show full height after onLoad
             controller.map.reposition();
@@ -377,6 +380,8 @@
             });
 
         });
+
+        controller.map.addLayer(controller._locatorMarkerGraphicsLayer);
     });
 
     /**
@@ -546,6 +551,10 @@
             $("#geo-indicator").text("Geo: ON");
             $("#geo-indicator").css('color','green');
 
+            //Set jQueryHelper properties
+            controller.helper.setCenterPt(position.coords.latitude,position.coords.longitude,4326);
+            controller.helper.setZoom(9);
+
             controller._displayGeocodedLocation(position);
 
             if (position.coords.latitude != null && position.coords.longitude != null) {
@@ -694,11 +703,11 @@
         var locatorSymbol = null;
 
         if(window.devicePixelRatio >= 2){
-            myPositionSymbol = controller._pushPinLarge;
+//            myPositionSymbol = controller._pushPinLarge;
             locatorSymbol = controller._locatorMarkerLarge;
         }
         else{
-            myPositionSymbol = controller._pushPinSmall;
+//            myPositionSymbol = controller._pushPinSmall;
             locatorSymbol = controller._locatorMarkerSmall;
         }
 
@@ -708,11 +717,17 @@
         //    map.infoWindow.show(mapPoint, esri.dijit.InfoWindow.ANCHOR_LOWERLEFT);
 
         controller.map.graphics.clear();
-        controller.map.graphics.add(new esri.Graphic(geometry, myPositionSymbol));
+        controller.map.graphics.add(new esri.Graphic(geometry, controller.markerSymbol));
         controller.map.centerAndZoom(geometry, controller.zoomLevel);
 
         if(controller.accumulate == true)controller._locatorMarkerGraphicsLayer.add(new esri.Graphic(geometry, locatorSymbol));
 
+    };
+
+    controller.setHighAccuracy = function(value){
+        controller.stopGeolocation();
+        controller._setHighAccuracy = value;
+        controller.restartGeo();
     }
 
     /**
@@ -825,8 +840,14 @@
                 encodeURIComponent(controller.utils.getAccuracyCSV()));
     });
 
-    require(["esri/map","esri/symbols/PictureMarkerSymbol","esri/graphic","esri/geometry/Point","dojo/on"],
-            function(Map,PictureMarkerSymbol,Graphic,Point,on) {
+    require([
+        "esri/map",
+        "esri/symbols/PictureMarkerSymbol",
+        "esri/graphic",
+        "esri/geometry/Point",
+        "dojo/_base/Color",
+        "dojo/on"],
+            function(Map,PictureMarkerSymbol,Graphic,Point,Color,on) {
 
                 /////
                 // PRIVATE Variables
@@ -841,16 +862,27 @@
                 controller._accuracyDataCSV = "Date,Lat,Long,Accuracy,High_accuracy_boolean,Altitude,Heading,Speed,Altitude_accuracy,Interval_time,Total_elapsed_time,\r\n";
                 controller._pushPinLarge = new esri.symbol.PictureMarkerSymbol("images/pushpin104x108.png", 104, 108);
                 controller._pushPinSmall = new esri.symbol.PictureMarkerSymbol("images/pushpin52x54.png", 48, 48);
-                controller._locatorMarkerLarge = new esri.symbol.SimpleMarkerSymbol(esri.symbol.SimpleMarkerSymbol.STYLE_DIAMOND,
+                controller._locatorMarkerLarge = new esri.symbol.SimpleMarkerSymbol(esri.symbol.SimpleMarkerSymbol.STYLE_CIRCLE,
                         10,
-                        new esri.symbol.SimpleLineSymbol(esri.symbol.SimpleLineSymbol.STYLE_SOLID, new dojo.Color([0,0,0]), 1),
-                        new dojo.Color([255,255,0,0.5]));
+                        new esri.symbol.SimpleLineSymbol(esri.symbol.SimpleLineSymbol.STYLE_SOLID, new Color([0,0,0]), 1),
+                        new Color([255,255,0,0.5]));
 
-                controller._locatorMarkerSmall = new esri.symbol.SimpleMarkerSymbol(esri.symbol.SimpleMarkerSymbol.STYLE_DIAMOND,
+                controller._locatorMarkerSmall = new esri.symbol.SimpleMarkerSymbol(esri.symbol.SimpleMarkerSymbol.STYLE_CIRCLE,
                         5,
-                        new esri.symbol.SimpleLineSymbol(esri.symbol.SimpleLineSymbol.STYLE_SOLID, new dojo.Color([0,0,0]), 1),
-                        new dojo.Color([255,255,0,0.5]));
+                        new esri.symbol.SimpleLineSymbol(esri.symbol.SimpleLineSymbol.STYLE_SOLID, new Color([0,0,0]), 0.5),
+                        new Color([255,255,0,0.5]));
                 controller._locatorMarkerGraphicsLayer = new esri.layers.GraphicsLayer();
+
+                // Create the marker symbol
+                controller.markerSymbol = new PictureMarkerSymbol({
+                    "angle":0,
+                    "xoffset":0,
+                    "yoffset":0,
+                    "type":"esriPMS",
+                    "url":"images/green-pin.png",
+                    "width":35,
+                    "height":35
+                })
 
                 controller.init();
             }
