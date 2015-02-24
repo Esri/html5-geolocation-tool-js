@@ -712,6 +712,12 @@
 
         if(controller.accumulate == true)controller._locatorMarkerGraphicsLayer.add(new esri.Graphic(geometry, locatorSymbol));
 
+    };
+
+    controller.setHighAccuracy = function(value){
+        controller.stopGeolocation();
+        controller._setHighAccuracy = value;
+        controller.restartGeo();
     }
 
     /**
