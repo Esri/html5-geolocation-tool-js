@@ -4,21 +4,18 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
     <title>HTML 5 - Geolocation</title>
+    <link rel="stylesheet" href="http://js.arcgis.com/3.11/esri/css/esri.css">
+    <link rel="stylesheet" href="//code.jquery.com/mobile/1.3.2/jquery.mobile-1.3.2.min.css" />
+
     <!-- http://jquerymobile.com/blog/2013/04/10/announcing-jquery-mobile-1-3-1/#download -->
     <!-- http://code.jquery.com/ -->
-    <link rel="stylesheet" href="http://js.arcgis.com/3.6/js/dojo/dijit/themes/claro/claro.css">
-    <link rel="stylesheet" href="http://js.arcgis.com/3.6/js/esri/css/esri.css">
-    <link rel="stylesheet" href="http://code.jquery.com/mobile/1.3.2/jquery.mobile-1.3.2.min.css" />
-    <script type="text/javascript" src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
-    <script type="text/javascript" src="http://code.jquery.com/mobile/1.3.2/jquery.mobile-1.3.2.min.js"></script>
-    <script type="text/javascript" src="http://js.arcgis.com/3.7compact/"></script>
+
     <style type="text/css">
         html,body, div[data-role ="page"] {
             height: 100%;
             width: 100%;
             margin: 0px;
             padding: 0px;
-
         }
         .ui-content{
             height: 100%;
@@ -30,7 +27,7 @@
             margin-left: auto;
             margin-right: auto;
             text-align:center;
-            width: 100%;
+            width: 800px;
         }
         #map {
             position: absolute;
@@ -39,14 +36,17 @@
             width: 100%;
             padding: 0px;
             z-index: 0;
-
         }
-
-        #div1{
+        .tableDiv{
             position:absolute;
             margin: 5px;
             /*top: 0px;*/
             z-index:1;
+            color: white;
+            background-color: #000000 !important;
+        }
+        .tableData{
+            padding: 8px;
         }
         .settings-border1{
             border-color: #707070;
@@ -57,6 +57,10 @@
             border-radius: 10px;
             margin: 15px;
             overflow: auto;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 12px;
         }
         .settings-input{
             width: 50%;
@@ -82,7 +86,6 @@
             font-family: Arial, Helvetica, sans-serif;
             background-color: #000000;
             opacity: 0.6;
-
             -webkit-border-radius: 10px;
             -moz-border-radius: 10px;
             border-radius: 10px;
@@ -99,32 +102,32 @@
         <a href="#settings" data-role="button" data-icon="gear" class="ui-btn-right" data-iconpos="notext">Settings</a>
     </div>
 
-    <div id="div1">
+    <div id="div1" class="tableDiv">
         <table id="table1" border="1">
             <tr>
-                <td>
+                <td class="tableData">
                     <div id="altitude">Alt: n/a</div>
                 </td>
-                <td colspan="2">
+                <td colspan="2" class="tableData">
                     <div id="location">0.00, 0.00</div>
                 </td>
             </tr>
             <tr>
-                <td>
+                <td class="tableData">
                     <div id="speed">Spd: n/a</div>
                 </td>
-                <td colspan="2">
+                <td colspan="2" class="tableData">
                     <div id="timestamp">0:00:00</div>
                 </td>
             </tr>
             <tr>
-                <td>
+                <td class="tableData">
                     <div id="heading">Hdg: n/a</div>
                 </td>
-                <td>
+                <td class="tableData">
                     <div id="accuracy">Acc: 0m</div>
                 </td>
-                <td>
+                <td class="tableData">
                     <div id="geo-indicator">Geo: OFF</div>
                 </td>
             </tr>
@@ -205,6 +208,10 @@
         </div>
     </div>
 </div>
+
+<script src="//code.jquery.com/jquery-1.9.1.min.js"></script>
+<script src="//code.jquery.com/mobile/1.3.2/jquery.mobile-1.3.2.min.js"></script>
+<script src="http://js.arcgis.com/3.11/"></script>
 
 <script type="text/javascript">
 
@@ -349,8 +356,8 @@
                 controller.startGeolocation();
             }
             else{
+                console.log("LocationHelper.js: device not ready - unable to start geolocation.");
                 console.log("Device not ready - unable to start geolocation.");
-
             }
 
             //Handle orientation events to allow for resizing the map and working around
