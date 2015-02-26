@@ -8,7 +8,7 @@
     <style>
         #mapDiv{
             height: 300px;
-            width: 500px;
+            width: 100%;
         }
         #elapsed-time{
             float: right;
@@ -60,6 +60,7 @@
         var maxArraySize = 100;
         var lastUpdateDiffMillis = 0;
         var lastUpdateDateTime = 0;
+        var positionObject = {}, missMapDraw = false;
         var timer = null;
         var map = null, _markerSymbol = null;
 
@@ -82,6 +83,8 @@
         var avgLatLonDiv = document.getElementById("avg-lat-lon");
         var latLonArrayCountDiv = document.getElementById("lat-lon-array-count");
 
+        // We want to start the geolocation as early as possible in the application.
+        startGeo();
 
         require([
             "esri/map",
@@ -108,9 +111,16 @@
                         "width":35,
                         "height":35
                     });
-        });
 
-        startGeo();
+                    // If we have geolocation information ready the instant the map loads
+                    // let's go ahead and drop a location marker on the map.
+                    map.on("load",function(){
+                        if(missMapDraw){ 
+                            drawLocationMarker(positionObject.lat,positionObject.lon);
+                            missMapDraw = false;
+                        }
+                    })
+        });
 
         function startGeo(){
 
@@ -130,6 +140,8 @@
         function geoResults(position){
 
             restartTimer();
+
+            positionObject = position;
 
             var html5Lat = position.coords.latitude; //Get latitude
             var html5Lon = position.coords.longitude; //Get longitude
@@ -158,6 +170,10 @@
                             "esri/graphic",
                             "esri/geometry/Point"],
                         function(Graphic,Point){
+
+                            // We only want one symbol
+                            map.graphics.clear();
+
                             var geometry = new Point(lon,lat);
 
                             // Have to wait for map to initialize
@@ -167,6 +183,10 @@
                             }
                         }
                 )
+            }
+            else{
+                missMapDraw = true;
+                positionObject = {lat:lat,lon:lon};
             }
         }
 
