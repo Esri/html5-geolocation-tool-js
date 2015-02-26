@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Geodata Test</title>
+</head>
+<body>
+    <button onclick="stopAll()">Stop!</button>
+    <button onclick="startGeo()">Start!</button>
+    <hr>
+    <div id="lat">0.0</div>
+    <div id="lon">Lon: 0.0</div>
+    <div id="accuracy">Accuracy: 0.0</div>
+    <div id="heading">Heading: 0</div>
+    <div id="altitude">Altitude: 0</div>
+    <div id="speed">Speed: 0</div>
+    <div id="timestamp">Timestamp: 0</div>
+    <hr>
+    <div id="time-diff">Time since last update: 0</div>
+    <div id="strd-accuracy">Standard Deviation (accuracy): 0</div>
+    <div id="avg-accuracy">Average (accuracy): 0</div>
+    <div id="accuracy-array-count">Accuracy Array Length: 0</div>
+
+<script>
+
+    //
+    // EXPERIMENTAL!!
+    //
+
+    var _watchID = null;
+    var accuracyArray = [];
+    var maxAccuracyArraySize = 100;
+    var lastUpdateDiffMillis = 0;
+    var lastUpdateDateTime = 0;
+    var timer = null;
+
+    var strdAccuracyDiv = document.getElementById("strd-accuracy");
+    var avgAccuracyDiv = document.getElementById("avg-accuracy");
+    var accuracyDiv = document.getElementById("accuracy");
+    var latDiv = document.getElementById("lat");
+    var lonDiv = document.getElementById("lon");
+    var altitudeDiv = document.getElementById("altitude");
+    var speedDiv = document.getElementById("speed");
+    var timestampDiv = document.getElementById("timestamp");
+    var headingDiv = document.getElementById("heading");
+    var timeDiffDiv = document.getElementById("time-diff");
+    var accuracyArrCountDiv = document.getElementById("accuracy-array-count");
+
+    startGeo();
+
+    function startGeo(){
+
+        startTimer();
+
+        _watchID = navigator.geolocation.watchPosition(
+                geoResults,
+                geoErrors,
+                {
+                    timeout: 60000,
+                    enableHighAccuracy: true,
+                    maximumAge: 300000 //5 minutes
+                }
+        );
+    }
+
+    function geoResults(position){
+
+        restartTimer();
+
+        var html5Lat = position.coords.latitude; //Get latitude
+        var html5Lon = position.coords.longitude; //Get longitude
+        var html5TimeStamp = position.timestamp; //Get timestamp
+        var html5Accuracy = position.coords.accuracy; 	//Get accuracy in meters
+        var html5Heading = position.coords.heading;
+        var html5Speed = position.coords.speed;
+        var html5Altitude = position.coords.altitude;
+
+        if(html5Lat != null) latDiv.innerHTML = "Lat: " + html5Lat.toString();
+        if(html5Lon != null) lonDiv.innerHTML = "Lon: " + html5Lon.toString();
+        if(html5TimeStamp != null) timestampDiv.innerHTML = "Timestamp: " + html5TimeStamp.toString();
+        if(html5Accuracy != null) accuracyDiv.innerHTML = "Accuracy (m): " + html5Accuracy.toString();
+        if(html5Heading != null) headingDiv.innerHTML = "Heading: " + html5Heading.toString();
+        if(html5Speed != null) speedDiv.innerHTML = "Speed (m/s): " + html5Speed.toString();
+        if(html5Altitude != null) altitudeDiv.innerHTML = "Altitude: " + html5Altitude.toString();
+
+
+        accuracyArrayHandler(html5Accuracy);
+    }
+
+    function startTimer(){
+        var count = 0;
+        timer = setInterval(function(){
+            timeDiffDiv.innerHTML = "Time since last update (ms): " + count++;
+        },1);
+    }
+
+    function restartTimer(){
+        clearInterval(timer);
+        startTimer();
+    }
+
+    function stopTimer(){
+        clearInterval(timer);
+    }
+
+    function accuracyArrayHandler(accuracy){
+        if(accuracyArray.length > maxAccuracyArraySize){
+            accuracyArray.shift();
+        }
+        accuracyArray.push(accuracy);
+        strdAccuracyDiv.innerHTML = "Standard Deviation (accuracy): " + standardDeviation(accuracyArray).toFixed(2).toString();
+        avgAccuracyDiv.innerHTML = "Average (accuracy): " + average(accuracyArray).toFixed(2).toString();
+        accuracyArrCountDiv.innerHTML = "Accuracy Array Count: " + accuracyArray.length.toString();
+    }
+
+    function geoErrors(error){
+        switch(error.code){
+            // "PERMISSION_DENIED"
+            case 1:
+
+                break;
+
+            // "POSITION_UNAVAILABLE"
+            case 2:
+
+                break;
+
+            // "TIMEOUT"
+            case 3:
+                //Read more at http://dev.w3.org/geo/api/spec-source.html#timeout
+
+                break;
+        }
+    }
+
+    function stopAll(){
+        stopTimer();
+        navigator.geolocation.clearWatch(_watchID);
+    }
+
+    /**
+     * standardDeviation() and average() functions courtesy of:
+     * http://derickbailey.com/2014/09/21/calculating-standard-deviation-with-array-map-and-array-reduce-in-javascript/
+     * @param values Array
+     * @returns {number}
+     */
+    function standardDeviation(values){
+        var avg = average(values);
+
+        var squareDiffs = values.map(function(value){
+            var diff = value - avg;
+            var sqrDiff = diff * diff;
+            return sqrDiff;
+        });
+
+        var avgSquareDiff = average(squareDiffs);
+
+        var stdDev = Math.sqrt(avgSquareDiff);
+        return stdDev;
+    }
+
+    function average(data){
+        var sum = data.reduce(function(sum, value){
+            return sum + value;
+        }, 0);
+
+        var avg = sum / data.length;
+        return avg;
+    }
+
+</script>
+</body>
+</html>
