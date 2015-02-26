@@ -239,18 +239,18 @@
             switch(error.code){
                 // "PERMISSION_DENIED"
                 case 1:
-
+                    alert("Permission denied to get location.");
                     break;
 
                 // "POSITION_UNAVAILABLE"
                 case 2:
-
+                    alert("Failed to get a location.");
                     break;
 
                 // "TIMEOUT"
                 case 3:
                     //Read more at http://dev.w3.org/geo/api/spec-source.html#timeout
-
+                    alert("Application timed out before getting a valid location.");
                     break;
             }
         }
