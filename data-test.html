@@ -41,6 +41,9 @@
 
         //
         // EXPERIMENTAL!!
+        // This is a demonstration app to demonstrate a very simple
+        // algorithm for smoothing out geolocation results to
+        // capture a single location.
         //
 
         var _watchID = null;
@@ -137,8 +140,7 @@
             if(html5Speed != null) speedDiv.innerHTML = "Speed (m/s): " + html5Speed.toString();
             if(html5Altitude != null) altitudeDiv.innerHTML = "Altitude: " + html5Altitude.toString();
 
-            accuracyArrayHandler(html5Accuracy);
-            latLonHandler(html5Lat,html5Lon);
+            accuracyArrayHandler(html5Accuracy,html5Lat,html5Lon);
             drawLocationMarker(html5Lat,html5Lon);
         }
 
@@ -182,17 +184,41 @@
             map.graphics.clear();
         }
 
-        function accuracyArrayHandler(accuracy){
+        //
+        //
+        // ALGORITHM FOR HANDLING ACCURACY
+        //
+        //
+
+        function accuracyArrayHandler(accuracy,lat,lon){
+
+            // Manage our array size to keep from blowing up memory
             if(accuracyArray.length > maxArraySize){
                 accuracyArray.shift();
             }
-            accuracyArray.push(accuracy);
+
+            // REJECT any lat lon values if accuracy is greater than our maximum acceptable
+            if(accuracy < MAX_ACCURACY_ALLOWED){
+                accuracyArray.push(accuracy);
+
+                // We can process these lat/lon values
+                latLonHandler(lat,lon);
+            }
+
             strdAccuracyDiv.innerHTML = "Standard Deviation (accuracy): " + standardDeviation(accuracyArray).toFixed(2).toString();
             avgAccuracyDiv.innerHTML = "Average (accuracy): " + average(accuracyArray).toFixed(2).toString();
             accuracyArrCountDiv.innerHTML = "Accuracy Array Count: " + accuracyArray.length.toString();
         }
 
+        //
+        //
+        // ALGORITHM FOR HANDLING LATITUDE/LONGITUDE VALUES
+        //
+        //
+
         function latLonHandler(lat,lon){
+
+            // Manage our array size to keep from blowing up memory
             if(latArray.length > maxArraySize){
                 latArray.shift();
             }
