@@ -10,12 +10,18 @@
             height: 300px;
             width: 500px;
         }
+        #elapsed-time{
+            float: right;
+        }
     </style>
 </head>
 <body>
-    <button onclick="stopAll()">Stop!</button>
-    <button onclick="startGeo()">Start!</button>
-    <button onclick="resert()">Reset!</button>
+    <div>
+        <button onclick="stopAll()">Stop!</button>
+        <button onclick="startGeo()">Start!</button>
+        <button onclick="resert()">Reset!</button>
+        <div id="elapsed-time">00:00:00:0000</div>
+    </div>
     <hr>
     <div id="mapDiv"></div>
     <hr>
@@ -26,8 +32,8 @@
     <div id="altitude">Altitude: 0</div>
     <div id="speed">Speed: 0</div>
     <div id="timestamp">Timestamp: 0</div>
-    <hr>
     <div id="time-diff">Time since last update: 0</div>
+    <hr>
     <div id="strd-accuracy">Standard Deviation (accuracy): 0</div>
     <div id="avg-accuracy">Average (accuracy): 0</div>
     <div id="accuracy-array-count">Accuracy Array Length: 0</div>
@@ -47,6 +53,7 @@
         //
 
         var _watchID = null;
+        var _dateStart = new Date();
         var accuracyArray = [];
         var latArray = [];
         var lonArray = [];
@@ -146,35 +153,64 @@
 
         function drawLocationMarker(lat, lon){
 
-            require([
-                "esri/graphic",
-                "esri/geometry/Point"],
-                    function(Graphic,Point){
-                        var geometry = new Point(lon,lat);
+            if(map != null && map.graphics != null){
+                require([
+                            "esri/graphic",
+                            "esri/geometry/Point"],
+                        function(Graphic,Point){
+                            var geometry = new Point(lon,lat);
 
-                        // Have to wait for map to initialize
-                        if(map != null){
-                            map.graphics.add(new Graphic(geometry, _markerSymbol));
-                            map.centerAndZoom(geometry, 12);
+                            // Have to wait for map to initialize
+                            if(map != null){
+                                map.graphics.add(new Graphic(geometry, _markerSymbol));
+                                map.centerAndZoom(geometry, 12);
+                            }
                         }
-                    }
-            )
+                )
+            }
         }
 
         function startTimer(){
-            var count = 0;
-            timer = setInterval(function(){
-                timeDiffDiv.innerHTML = "Time since last update (ms): " + count++;
-            },1);
+
+            var startDate = new Date();
+
+            timer = new Worker("background-timer.js");
+
+            timer.onmessage = function(event){
+                timeDiffDiv.innerHTML = "Time since last update (ms): " + elapsedTime(new Date(Math.abs(event.data - startDate.getTime())));
+            };
         }
 
         function restartTimer(){
-            clearInterval(timer);
+            timer.terminate();
             startTimer();
         }
 
         function stopTimer(){
-            clearInterval(timer);
+            timer.terminate();
+        }
+
+        /**
+         * Calculate HH:MM:SS:MS from a given Date in millis
+         * @param date
+         * @returns {string}
+         * @private
+         */
+        function elapsedTime(/* Date */ date){;
+            var msec = date;
+            var hh = Math.floor(msec / 1000 / 60 / 60);
+            msec -= hh * 1000 * 60 * 60;
+            var mm = Math.floor(msec / 1000 / 60);
+            msec -= mm * 1000 * 60;
+            var ss = Math.floor(msec / 1000);
+            msec -= ss * 1000;
+
+            hh = hh < 10 ? "0" + hh : hh;
+            mm = mm < 10 ? "0" + mm : mm;
+            ss = ss < 10 ? "0" + ss : ss;
+            msec = msec < 10 ? "0" + msec : msec;
+
+            return hh + ":" + mm + ":" + ss + ":" + msec;
         }
 
         function reset(){
@@ -205,8 +241,8 @@
                 latLonHandler(lat,lon);
             }
 
-            strdAccuracyDiv.innerHTML = "Standard Deviation (accuracy): " + standardDeviation(accuracyArray).toFixed(2).toString();
-            avgAccuracyDiv.innerHTML = "Average (accuracy): " + average(accuracyArray).toFixed(2).toString();
+            strdAccuracyDiv.innerHTML = "Standard Deviation (accuracy): " + standardDeviation(accuracyArray).toFixed(4).toString();
+            avgAccuracyDiv.innerHTML = "Average (accuracy): " + average(accuracyArray).toFixed(4).toString();
             accuracyArrCountDiv.innerHTML = "Accuracy Array Count: " + accuracyArray.length.toString();
         }
 
@@ -227,10 +263,10 @@
             }
             latArray.push(lat);
             lonArray.push(lon);
-            strdLatLonArrayDiv.innerHTML = "Standard Deviation (lat, lon): " + standardDeviation(latArray).toFixed(2).toString() +
-                ", " + standardDeviation(lonArray).toFixed(2).toString();
-            avgLatLonDiv.innerHTML = "Average (lat, lon): " + average(latArray).toFixed(2).toString() +
-                ", " + average(lonArray).toFixed(2).toString();
+            strdLatLonArrayDiv.innerHTML = "Standard Deviation (lat, lon): " + standardDeviation(latArray).toFixed(4).toString() +
+                ", " + standardDeviation(lonArray).toFixed(4).toString();
+            avgLatLonDiv.innerHTML = "Average (lat, lon): " + average(latArray).toFixed(4).toString() +
+                ", " + average(lonArray).toFixed(4).toString();
             latLonArrayCountDiv.innerHTML = "Lat, Lon Array Length: " + latArray.length.toString() +
                 ", " + lonArray.length.toString();
         }
