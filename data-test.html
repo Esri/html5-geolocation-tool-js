@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html>
+<--
+
+//
+// EXPERIMENTAL!!
+// This is a demonstration app to demonstrate a very simple
+// algorithm for smoothing out geolocation results to
+// capture a single location.
+//
+
+-->
+<head lang="en">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+    <title>Geodata Test</title>
+    <link rel="stylesheet" href="http://js.arcgis.com/3.13/esri/css/esri.css">
+    <style>
+        #mapDiv{
+            height: 300px;
+            width: 100%;
+        }
+        #elapsed-time{
+            float: right;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <button onclick="stopAll()">Stop!</button>
+        <button onclick="startGeo()">Restart!</button>
+        <button onclick="reset()">Reset!</button>
+        <div id="elapsed-time">00:00:00:0000</div>
+    </div>
+    <hr>
+    <div id="mapDiv"></div>
+    <hr>
+    <div id="lat">0.0</div>
+    <div id="lon">Lon: 0.0</div>
+    <div id="accuracy">Accuracy: 0.0</div>
+    <div id="heading">Heading: 0</div>
+    <div id="altitude">Altitude: 0</div>
+    <div id="speed">Speed: 0</div>
+    <div id="timestamp">Timestamp: 0</div>
+    <div id="time-diff">Time since last update: 0</div>
+    <hr>
+    <div id="strd-accuracy">Standard Deviation (accuracy): 0</div>
+    <div id="avg-accuracy">Average (accuracy): 0</div>
+    <div id="accuracy-array-count">Accuracy Array Length: 0</div>
+    <hr>
+    <div id="strd-lat-lon">Standard Deviation (lat, lon): 0, 0</div>
+    <div id="avg-lat-lon">Average (lat, lon): 0, 0</div>
+    <div id="lat-lon-array-count">Lat,Lon Array Length: 0, 0</div>
+
+    <script src="http://js.arcgis.com/3.12/"></script>
+    <script>
+
+        //
+        // EXPERIMENTAL!!
+        // This is a demonstration app to demonstrate a very simple
+        // algorithm for smoothing out geolocation results to
+        // capture a single location.
+        //
+
+        var _watchID = null;
+        var _dateStart = new Date();
+        var accuracyArray = [];
+        var latArray = [];
+        var lonArray = [];
+        var maxArraySize = 100;
+        var lastUpdateDiffMillis = 0;
+        var lastUpdateDateTime = 0;
+        var positionObject = {}, missMapDraw = false;
+        var differenceTimer = null;
+        var masterTimer = null;
+        var map = null, _markerSymbol = null;
+
+        // Algorithm
+        var MAX_ACCURACY_ALLOWED = 100; // meters
+
+        // Divs
+        var strdAccuracyDiv = document.getElementById("strd-accuracy");
+        var avgAccuracyDiv = document.getElementById("avg-accuracy");
+        var accuracyDiv = document.getElementById("accuracy");
+        var latDiv = document.getElementById("lat");
+        var lonDiv = document.getElementById("lon");
+        var altitudeDiv = document.getElementById("altitude");
+        var speedDiv = document.getElementById("speed");
+        var timestampDiv = document.getElementById("timestamp");
+        var headingDiv = document.getElementById("heading");
+        var timeDiffDiv = document.getElementById("time-diff");
+        var accuracyArrCountDiv = document.getElementById("accuracy-array-count");
+        var strdLatLonArrayDiv = document.getElementById("strd-lat-lon");
+        var avgLatLonDiv = document.getElementById("avg-lat-lon");
+        var latLonArrayCountDiv = document.getElementById("lat-lon-array-count");
+        var elapsedTimeDiv = document.getElementById("elapsed-time");
+
+        // We want to start the geolocation as early as possible in the application.
+        startGeo();
+
+        require([
+            "esri/map",
+            "esri/symbols/PictureMarkerSymbol",
+            "esri/graphic",
+            "esri/geometry/Point",
+            "dojo/_base/Color",
+            "dojo/domReady!"],
+                function(Map,PictureMarkerSymbol,Graphic,Point,Color) {
+
+                    map = new Map("mapDiv", {
+                        basemap: "topo",
+                        center: [-122.45, 37.75], // longitude, latitude
+                        zoom: 13
+                    });
+
+                    // Create the marker symbol
+                    _markerSymbol = new PictureMarkerSymbol({
+                        "angle":0,
+                        "xoffset":0,
+                        "yoffset":16,
+                        "type":"esriPMS",
+                        "url":"images/green-pin.png",
+                        "width":35,
+                        "height":35
+                    });
+
+                    // If we have geolocation information ready the instant the map loads
+                    // let's go ahead and drop a location marker on the map.
+                    map.on("load",function(){
+                        if(missMapDraw){
+                            drawLocationMarker(positionObject.lat,positionObject.lon);
+                            missMapDraw = false;
+                        }
+                    })
+        });
+
+        function startGeo(){
+
+            reset();
+            startDifferenceTimer();
+            startMasterTimer();
+
+            _watchID = navigator.geolocation.watchPosition(
+                    geoResults,
+                    geoErrors,
+                    {
+                        timeout: 60000,
+                        enableHighAccuracy: true,
+                        maximumAge: 300000 //5 minutes
+                    }
+            );
+        }
+
+        function geoResults(position){
+
+            restartDifferenceTimer();
+
+            positionObject = position;
+
+            var html5Lat = position.coords.latitude; //Get latitude
+            var html5Lon = position.coords.longitude; //Get longitude
+            var html5TimeStamp = position.timestamp; //Get timestamp
+            var html5Accuracy = position.coords.accuracy; 	//Get accuracy in meters
+            var html5Heading = position.coords.heading;
+            var html5Speed = position.coords.speed;
+            var html5Altitude = position.coords.altitude;
+
+            if(html5Lat != null) latDiv.innerHTML = "Lat: " + html5Lat.toString();
+            if(html5Lon != null) lonDiv.innerHTML = "Lon: " + html5Lon.toString();
+            if(html5TimeStamp != null) timestampDiv.innerHTML = "Timestamp: " + html5TimeStamp.toString();
+            if(html5Accuracy != null) accuracyDiv.innerHTML = "Accuracy (m): " + html5Accuracy.toString();
+            if(html5Heading != null) headingDiv.innerHTML = "Heading: " + html5Heading.toString();
+            if(html5Speed != null) speedDiv.innerHTML = "Speed (m/s): " + html5Speed.toString();
+            if(html5Altitude != null) altitudeDiv.innerHTML = "Altitude: " + html5Altitude.toString();
+
+            accuracyArrayHandler(html5Accuracy,html5Lat,html5Lon);
+            drawLocationMarker(html5Lat,html5Lon);
+        }
+
+        function drawLocationMarker(lat, lon){
+
+            if(map != null && map.graphics != null){
+                require([
+                            "esri/graphic",
+                            "esri/geometry/Point"],
+                        function(Graphic,Point){
+
+                            // We only want one symbol
+                            map.graphics.clear();
+
+                            var geometry = new Point(lon,lat);
+
+                            // Have to wait for map to initialize
+                            if(map != null){
+                                map.graphics.add(new Graphic(geometry, _markerSymbol));
+                                map.centerAndZoom(geometry, 12);
+                            }
+                        }
+                )
+            }
+            else{
+                missMapDraw = true;
+                positionObject = {lat:lat,lon:lon};
+            }
+        }
+
+        function startMasterTimer(){
+
+            var startDate = new Date();
+
+            masterTimer = new Worker("background-timer.js");
+            masterTimer.onmessage = function(event){
+                elapsedTimeDiv.innerHTML = "Elapsed: " + elapsedTime(new Date(Math.abs(event.data - startDate.getTime())),true);;
+            }
+        }
+
+        function stopMasterTimer(){
+            masterTimer.terminate();
+        }
+
+        function startDifferenceTimer(){
+
+            var startDate = new Date();
+
+            differenceTimer = new Worker("background-timer.js");
+
+            differenceTimer.onmessage = function(event){
+                timeDiffDiv.innerHTML = "Time since last update (ms): " + elapsedTime(new Date(Math.abs(event.data - startDate.getTime())),false);
+            };
+        }
+
+        function restartAll(){
+            differenceTimer.terminate();
+            masterTimer.terminate();
+            startDifferenceTimer();
+            startMasterTimer();
+        }
+
+        function restartDifferenceTimer(){
+            differenceTimer.terminate();
+            startDifferenceTimer();
+        }
+
+        function stopTimers(){
+            differenceTimer.terminate();
+            masterTimer.terminate();
+        }
+
+        /**
+         * Calculate HH:MM:SS:MS from a given Date in millis
+         * @param date
+         * @param hmsOnly boolean HH:MM:SS only
+         * @returns {string}
+         * @private
+         */
+        function elapsedTime(/* Date */ date,hmsOnly){;
+            var msec = date;
+            var hh = Math.floor(msec / 1000 / 60 / 60);
+            msec -= hh * 1000 * 60 * 60;
+            var mm = Math.floor(msec / 1000 / 60);
+            msec -= mm * 1000 * 60;
+            var ss = Math.floor(msec / 1000);
+            msec -= ss * 1000;
+
+            hh = hh < 10 ? "0" + hh : hh;
+            mm = mm < 10 ? "0" + mm : mm;
+            ss = ss < 10 ? "0" + ss : ss;
+            msec = msec < 10 ? "0" + msec : msec;
+
+            if(hmsOnly){
+                return hh + ":" + mm + ":" + ss;
+            }
+            else {
+                return hh + ":" + mm + ":" + ss + ":" + msec;
+            }
+        }
+
+        function reset(){
+            accuracyArray = [];
+            latArray = [];
+            lonArray = [];
+            map.graphics.clear();
+        }
+
+        //
+        //
+        // ALGORITHM FOR HANDLING ACCURACY
+        //
+        //
+
+        function accuracyArrayHandler(accuracy,lat,lon){
+
+            // Manage our array size to keep from blowing up memory
+            if(accuracyArray.length > maxArraySize){
+                accuracyArray.shift();
+            }
+
+            // REJECT any lat lon values if accuracy is greater than our maximum acceptable
+            if(accuracy < MAX_ACCURACY_ALLOWED){
+                accuracyArray.push(accuracy);
+
+                // We can process these lat/lon values
+                latLonHandler(lat,lon);
+            }
+
+            strdAccuracyDiv.innerHTML = "Standard Deviation (accuracy): " + standardDeviation(accuracyArray).toFixed(4).toString();
+            avgAccuracyDiv.innerHTML = "Average (accuracy): " + average(accuracyArray).toFixed(4).toString();
+            accuracyArrCountDiv.innerHTML = "Accuracy Array Count: " + accuracyArray.length.toString();
+        }
+
+        //
+        //
+        // ALGORITHM FOR HANDLING LATITUDE/LONGITUDE VALUES
+        //
+        //
+
+        function latLonHandler(lat,lon){
+
+            // Manage our array size to keep from blowing up memory
+            if(latArray.length > maxArraySize){
+                latArray.shift();
+            }
+            if(lonArray.length > maxArraySize){
+                lonArray.shift();
+            }
+            latArray.push(lat);
+            lonArray.push(lon);
+            strdLatLonArrayDiv.innerHTML = "Standard Deviation (lat, lon): " + standardDeviation(latArray).toFixed(4).toString() +
+                ", " + standardDeviation(lonArray).toFixed(4).toString();
+            avgLatLonDiv.innerHTML = "Average (lat, lon): " + average(latArray).toFixed(4).toString() +
+                ", " + average(lonArray).toFixed(4).toString();
+            latLonArrayCountDiv.innerHTML = "Lat, Lon Array Length: " + latArray.length.toString() +
+                ", " + lonArray.length.toString();
+        }
+
+        function geoErrors(error){
+            switch(error.code){
+                // "PERMISSION_DENIED"
+                case 1:
+                    alert("Permission denied to get location.");
+                    break;
+
+                // "POSITION_UNAVAILABLE"
+                case 2:
+                    alert("Failed to get a location.");
+                    break;
+
+                // "TIMEOUT"
+                case 3:
+                    //Read more at http://dev.w3.org/geo/api/spec-source.html#timeout
+                    alert("Application timed out before getting a valid location.");
+                    break;
+            }
+        }
+
+        function stopAll(){
+            stopTimers();
+            navigator.geolocation.clearWatch(_watchID);
+        }
+
+        /**
+         * standardDeviation() and average() functions courtesy of:
+         * http://derickbailey.com/2014/09/21/calculating-standard-deviation-with-array-map-and-array-reduce-in-javascript/
+         * @param values Array
+         * @returns {number}
+         */
+        function standardDeviation(values){
+            var avg = average(values);
+
+            var squareDiffs = values.map(function(value){
+                var diff = value - avg;
+                var sqrDiff = diff * diff;
+                return sqrDiff;
+            });
+
+            var avgSquareDiff = average(squareDiffs);
+
+            var stdDev = Math.sqrt(avgSquareDiff);
+            return stdDev;
+        }
+
+        function average(data){
+            var sum = data.reduce(function(sum, value){
+                return sum + value;
+            }, 0);
+
+            var avg = sum / data.length;
+            return avg;
+        }
+
+    </script>
+</body>
+</html>
