@@ -1,5 +1,15 @@
 <!DOCTYPE html>
 <html>
+<--
+
+//
+// EXPERIMENTAL!!
+// This is a demonstration app to demonstrate a very simple
+// algorithm for smoothing out geolocation results to
+// capture a single location.
+//
+
+-->
 <head lang="en">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
@@ -18,8 +28,8 @@
 <body>
     <div>
         <button onclick="stopAll()">Stop!</button>
-        <button onclick="startGeo()">Start!</button>
-        <button onclick="resert()">Reset!</button>
+        <button onclick="startGeo()">Restart!</button>
+        <button onclick="reset()">Reset!</button>
         <div id="elapsed-time">00:00:00:0000</div>
     </div>
     <hr>
@@ -61,7 +71,8 @@
         var lastUpdateDiffMillis = 0;
         var lastUpdateDateTime = 0;
         var positionObject = {}, missMapDraw = false;
-        var timer = null;
+        var differenceTimer = null;
+        var masterTimer = null;
         var map = null, _markerSymbol = null;
 
         // Algorithm
@@ -82,6 +93,7 @@
         var strdLatLonArrayDiv = document.getElementById("strd-lat-lon");
         var avgLatLonDiv = document.getElementById("avg-lat-lon");
         var latLonArrayCountDiv = document.getElementById("lat-lon-array-count");
+        var elapsedTimeDiv = document.getElementById("elapsed-time");
 
         // We want to start the geolocation as early as possible in the application.
         startGeo();
@@ -115,7 +127,7 @@
                     // If we have geolocation information ready the instant the map loads
                     // let's go ahead and drop a location marker on the map.
                     map.on("load",function(){
-                        if(missMapDraw){ 
+                        if(missMapDraw){
                             drawLocationMarker(positionObject.lat,positionObject.lon);
                             missMapDraw = false;
                         }
@@ -124,7 +136,9 @@
 
         function startGeo(){
 
-            startTimer();
+            reset();
+            startDifferenceTimer();
+            startMasterTimer();
 
             _watchID = navigator.geolocation.watchPosition(
                     geoResults,
@@ -139,7 +153,7 @@
 
         function geoResults(position){
 
-            restartTimer();
+            restartDifferenceTimer();
 
             positionObject = position;
 
@@ -190,33 +204,56 @@
             }
         }
 
-        function startTimer(){
+        function startMasterTimer(){
 
             var startDate = new Date();
 
-            timer = new Worker("background-timer.js");
+            masterTimer = new Worker("background-timer.js");
+            masterTimer.onmessage = function(event){
+                elapsedTimeDiv.innerHTML = "Elapsed: " + elapsedTime(new Date(Math.abs(event.data - startDate.getTime())),true);;
+            }
+        }
 
-            timer.onmessage = function(event){
-                timeDiffDiv.innerHTML = "Time since last update (ms): " + elapsedTime(new Date(Math.abs(event.data - startDate.getTime())));
+        function stopMasterTimer(){
+            masterTimer.terminate();
+        }
+
+        function startDifferenceTimer(){
+
+            var startDate = new Date();
+
+            differenceTimer = new Worker("background-timer.js");
+
+            differenceTimer.onmessage = function(event){
+                timeDiffDiv.innerHTML = "Time since last update (ms): " + elapsedTime(new Date(Math.abs(event.data - startDate.getTime())),false);
             };
         }
 
-        function restartTimer(){
-            timer.terminate();
-            startTimer();
+        function restartAll(){
+            differenceTimer.terminate();
+            masterTimer.terminate();
+            startDifferenceTimer();
+            startMasterTimer();
         }
 
-        function stopTimer(){
-            timer.terminate();
+        function restartDifferenceTimer(){
+            differenceTimer.terminate();
+            startDifferenceTimer();
+        }
+
+        function stopTimers(){
+            differenceTimer.terminate();
+            masterTimer.terminate();
         }
 
         /**
          * Calculate HH:MM:SS:MS from a given Date in millis
          * @param date
+         * @param hmsOnly boolean HH:MM:SS only
          * @returns {string}
          * @private
          */
-        function elapsedTime(/* Date */ date){;
+        function elapsedTime(/* Date */ date,hmsOnly){;
             var msec = date;
             var hh = Math.floor(msec / 1000 / 60 / 60);
             msec -= hh * 1000 * 60 * 60;
@@ -230,7 +267,12 @@
             ss = ss < 10 ? "0" + ss : ss;
             msec = msec < 10 ? "0" + msec : msec;
 
-            return hh + ":" + mm + ":" + ss + ":" + msec;
+            if(hmsOnly){
+                return hh + ":" + mm + ":" + ss;
+            }
+            else {
+                return hh + ":" + mm + ":" + ss + ":" + msec;
+            }
         }
 
         function reset(){
@@ -312,7 +354,7 @@
         }
 
         function stopAll(){
-            stopTimer();
+            stopTimers();
             navigator.geolocation.clearWatch(_watchID);
         }
 
