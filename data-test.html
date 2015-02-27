@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html>
-<--
+<!--
 
 //
 // EXPERIMENTAL!!
@@ -63,6 +63,7 @@
         //
 
         var _watchID = null;
+        var _zoomStop = 17;
         var _dateStart = new Date();
         var accuracyArray = [];
         var latArray = [];
@@ -73,10 +74,18 @@
         var positionObject = {}, missMapDraw = false;
         var differenceTimer = null;
         var masterTimer = null;
-        var map = null, _markerSymbol = null;
+        var map = null, _greenMarkerSymbol = null, _redMarkerSymbol = null, _yellowMarkerSymbol = null;
+        var _greenCircleSymbol = null, _redCircleSymbol = null, _yellowCircleSymbol = null;
 
         // Algorithm
         var MAX_ACCURACY_ALLOWED = 100; // meters
+        var MAX_AVERAGE_ACCURACY = 20;  // meters
+        var MAX_STDDEVIATION_ACCURACY = 2.5;
+        var MAX_STDDEVIATION_LAT = 0.0001;
+        var MAX_STDDEVIATION_LON = 0.0001;
+        var stddev_accuracy = 0, stddev_lat = 0, stddev_lon = 0;
+        var avg_accuracy = 0, avg_lat = 0, avg_lon = 0;
+
 
         // Divs
         var strdAccuracyDiv = document.getElementById("strd-accuracy");
@@ -104,25 +113,50 @@
             "esri/graphic",
             "esri/geometry/Point",
             "dojo/_base/Color",
+            "esri/geometry/Circle", "esri/symbols/SimpleFillSymbol",
             "dojo/domReady!"],
-                function(Map,PictureMarkerSymbol,Graphic,Point,Color) {
+                function(Map,PictureMarkerSymbol,Graphic,Point,Color,Circle,SimpleFillSymbol) {
 
                     map = new Map("mapDiv", {
                         basemap: "topo",
                         center: [-122.45, 37.75], // longitude, latitude
-                        zoom: 13
+                        zoom: 16
                     });
 
                     // Create the marker symbol
-                    _markerSymbol = new PictureMarkerSymbol({
+                    _greenMarkerSymbol = new PictureMarkerSymbol({
                         "angle":0,
                         "xoffset":0,
-                        "yoffset":16,
+                        "yoffset":13,
                         "type":"esriPMS",
                         "url":"images/green-pin.png",
                         "width":35,
                         "height":35
                     });
+
+                    _redMarkerSymbol = new PictureMarkerSymbol({
+                        "angle":0,
+                        "xoffset":0,
+                        "yoffset":13,
+                        "type":"esriPMS",
+                        "url":"images/red-pin.png",
+                        "width":35,
+                        "height":35
+                    });
+
+                    _yellowMarkerSymbol = new PictureMarkerSymbol({
+                        "angle":0,
+                        "xoffset":0,
+                        "yoffset":13,
+                        "type":"esriPMS",
+                        "url":"images/yellow-pin.png",
+                        "width":35,
+                        "height":35
+                    });
+
+                    _greenCircleSymbol = new SimpleFillSymbol().setColor(null).outline.setColor("green");
+                    _redCircleSymbol = new SimpleFillSymbol().setColor(null).outline.setColor("red");
+                    _yellowCircleSymbol = new SimpleFillSymbol().setColor(null).outline.setColor("yellow");
 
                     // If we have geolocation information ready the instant the map loads
                     // let's go ahead and drop a location marker on the map.
@@ -131,6 +165,10 @@
                             drawLocationMarker(positionObject.lat,positionObject.lon);
                             missMapDraw = false;
                         }
+                    });
+
+                    map.on("zoom-end",function(evt){
+                        _zoomStop = evt.level;
                     })
         });
 
@@ -167,23 +205,23 @@
 
             if(html5Lat != null) latDiv.innerHTML = "Lat: " + html5Lat.toString();
             if(html5Lon != null) lonDiv.innerHTML = "Lon: " + html5Lon.toString();
-            if(html5TimeStamp != null) timestampDiv.innerHTML = "Timestamp: " + html5TimeStamp.toString();
+            if(html5TimeStamp != null) timestampDiv.innerHTML = "Timestamp: " + new Date(html5TimeStamp).toUTCString();
             if(html5Accuracy != null) accuracyDiv.innerHTML = "Accuracy (m): " + html5Accuracy.toString();
             if(html5Heading != null) headingDiv.innerHTML = "Heading: " + html5Heading.toString();
             if(html5Speed != null) speedDiv.innerHTML = "Speed (m/s): " + html5Speed.toString();
             if(html5Altitude != null) altitudeDiv.innerHTML = "Altitude: " + html5Altitude.toString();
 
             accuracyArrayHandler(html5Accuracy,html5Lat,html5Lon);
-            drawLocationMarker(html5Lat,html5Lon);
         }
 
         function drawLocationMarker(lat, lon){
 
             if(map != null && map.graphics != null){
                 require([
-                            "esri/graphic",
-                            "esri/geometry/Point"],
-                        function(Graphic,Point){
+                    "esri/graphic",
+                    "esri/geometry/Circle",
+                    "esri/geometry/Point"],
+                        function(Graphic,Circle,Point){
 
                             // We only want one symbol
                             map.graphics.clear();
@@ -192,8 +230,31 @@
 
                             // Have to wait for map to initialize
                             if(map != null){
-                                map.graphics.add(new Graphic(geometry, _markerSymbol));
-                                map.centerAndZoom(geometry, 12);
+
+                                var finalMarkerSymbol = null;
+                                var finalCircleSymbol = null;
+
+                                if(avg_accuracy <= 10){
+                                    finalMarkerSymbol = _greenMarkerSymbol;
+                                    finalCircleSymbol = _greenCircleSymbol;
+                                }
+                                if(avg_accuracy <= 30){
+                                    finalMarkerSymbol = _yellowMarkerSymbol;
+                                    finalCircleSymbol = _yellowCircleSymbol;
+                                }
+                                else{
+                                    finalMarkerSymbol = _redMarkerSymbol;
+                                    finalCircleSymbol = _redCircleSymbol;
+                                }
+
+                                var circle = new Circle([lon,lat],{
+                                    radius: avg_accuracy,
+                                    geodesic: true
+                                });
+
+                                map.graphics.add(new Graphic(circle, finalCircleSymbol));
+                                map.graphics.add(new Graphic(geometry, finalMarkerSymbol));
+                                map.centerAndZoom(geometry, _zoomStop);
                             }
                         }
                 )
@@ -279,7 +340,7 @@
             accuracyArray = [];
             latArray = [];
             lonArray = [];
-            map.graphics.clear();
+            if(map !== null) map.graphics.clear();
         }
 
         //
@@ -299,12 +360,15 @@
             if(accuracy < MAX_ACCURACY_ALLOWED){
                 accuracyArray.push(accuracy);
 
+                avg_accuracy = average(accuracyArray);
+                stddev_accuracy = standardDeviation(accuracyArray);
+
                 // We can process these lat/lon values
                 latLonHandler(lat,lon);
             }
 
-            strdAccuracyDiv.innerHTML = "Standard Deviation (accuracy): " + standardDeviation(accuracyArray).toFixed(4).toString();
-            avgAccuracyDiv.innerHTML = "Average (accuracy): " + average(accuracyArray).toFixed(4).toString();
+            strdAccuracyDiv.innerHTML = "Standard Deviation (accuracy): " + stddev_accuracy.toFixed(5).toString();
+            avgAccuracyDiv.innerHTML = "Average (accuracy): " + avg_accuracy.toFixed(5).toString();
             accuracyArrCountDiv.innerHTML = "Accuracy Array Count: " + accuracyArray.length.toString();
         }
 
@@ -325,12 +389,23 @@
             }
             latArray.push(lat);
             lonArray.push(lon);
-            strdLatLonArrayDiv.innerHTML = "Standard Deviation (lat, lon): " + standardDeviation(latArray).toFixed(4).toString() +
-                ", " + standardDeviation(lonArray).toFixed(4).toString();
-            avgLatLonDiv.innerHTML = "Average (lat, lon): " + average(latArray).toFixed(4).toString() +
-                ", " + average(lonArray).toFixed(4).toString();
+
+            avg_lat = average(latArray);
+            avg_lon = average(lonArray);
+            stddev_lat = standardDeviation(latArray);
+            stddev_lon = standardDeviation(lonArray);
+
+            strdLatLonArrayDiv.innerHTML = "Standard Deviation (lat, lon): " + stddev_lat.toFixed(5).toString() +
+                ", " + stddev_lon.toFixed(5).toString();
+            avgLatLonDiv.innerHTML = "Average (lat, lon): " + avg_lat.toFixed(5).toString() +
+                ", " + avg_lon.toFixed(5).toString();
             latLonArrayCountDiv.innerHTML = "Lat, Lon Array Length: " + latArray.length.toString() +
                 ", " + lonArray.length.toString();
+
+
+            // Now we draw the location marker!
+            // Use average values of latitude and longitude
+            drawLocationMarker(avg_lat,avg_lon);
         }
 
         function geoErrors(error){
