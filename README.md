@@ -1,7 +1,11 @@
 html5-geolocation-tool-js
 =========================
 
-Use this fun jQuery Mobile web app to test HTML5 geolocation on different devices. It lets you track your location as well as play with the different HTML5 Geolocation properties. This can be used on a desktop browser, mobile browser or within a PhoneGap project.
+Includes two apps for testing HTML5 geolocation on different devices. It lets you track your location as well as play with the different HTML5 Geolocation properties. This can be used on a desktop browser, mobile browser or within a PhoneGap project.
+
+**[index.html](http://esri.github.io/html5-geolocation-tool-js/)** - let's you experiment with all the different settings as well as accumulating track points.
+
+**[data-test.html](http://esri.github.io/html5-geolocation-tool-js/data-test.html)** - is an experimental app that demonstrates a simple algorithm approach to helping users determine the best single location.
 
 Main View:
 
@@ -30,7 +34,7 @@ Settings View (cont'd):
 * Some experience with HTML/JavaScript.
 
 ## Licensing
-Copyright 2013 Esri
+Copyright 2015 Esri
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
