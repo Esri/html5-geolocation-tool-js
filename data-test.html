@@ -63,6 +63,7 @@
         //
 
         var _watchID = null;
+        var _zoomStop = 17;
         var _dateStart = new Date();
         var accuracyArray = [];
         var latArray = [];
@@ -164,6 +165,10 @@
                             drawLocationMarker(positionObject.lat,positionObject.lon);
                             missMapDraw = false;
                         }
+                    });
+
+                    map.on("zoom-end",function(evt){
+                        _zoomStop = evt.level;
                     })
         });
 
@@ -200,7 +205,7 @@
 
             if(html5Lat != null) latDiv.innerHTML = "Lat: " + html5Lat.toString();
             if(html5Lon != null) lonDiv.innerHTML = "Lon: " + html5Lon.toString();
-            if(html5TimeStamp != null) timestampDiv.innerHTML = "Timestamp: " + html5TimeStamp.toString();
+            if(html5TimeStamp != null) timestampDiv.innerHTML = "Timestamp: " + new Date(html5TimeStamp).toUTCString();
             if(html5Accuracy != null) accuracyDiv.innerHTML = "Accuracy (m): " + html5Accuracy.toString();
             if(html5Heading != null) headingDiv.innerHTML = "Heading: " + html5Heading.toString();
             if(html5Speed != null) speedDiv.innerHTML = "Speed (m/s): " + html5Speed.toString();
@@ -249,7 +254,7 @@
 
                                 map.graphics.add(new Graphic(circle, finalCircleSymbol));
                                 map.graphics.add(new Graphic(geometry, finalMarkerSymbol));
-                                map.centerAndZoom(geometry, 17);
+                                map.centerAndZoom(geometry, _zoomStop);
                             }
                         }
                 )
