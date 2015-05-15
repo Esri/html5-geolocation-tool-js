@@ -14,36 +14,70 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
     <title>Geodata Test</title>
+
     <link rel="stylesheet" href="http://js.arcgis.com/3.13/esri/css/esri.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" >
+    <link rel="stylesheet" href="//esri.github.io/bootstrap-map-js/src/css/bootstrapmap.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css" >
+
     <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+        }
         #mapDiv{
             height: 300px;
             width: 100%;
         }
-        #elapsed-time{
-            float: right;
-        }
     </style>
 </head>
 <body>
-    <div>
-        <button onclick="stopAll()">Stop!</button>
-        <button onclick="startGeo()">Restart!</button>
-        <button onclick="reset()">Reset!</button>
-        <div id="elapsed-time">00:00:00:0000</div>
+    <div class="panel panel-default">
+        <div class="panel-body">
+            <div class="row">
+                <div class="col-md-12">
+                    <button type="button" class="btn btn-danger" onclick="stopAll()">Stop!</button>
+                    <button type="button" class="btn btn-warning" onclick="reset()">Reset!</button>
+                    <button type="button" class="btn btn-success" onclick="startGeo()">Restart!</button>
+                    <button class="btn btn-primary" type="button">
+                        <span id="elapsed-time" class="badge">00:00:00:0000</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
-    <hr>
-    <div id="mapDiv"></div>
-    <hr>
-    <div id="lat">0.0</div>
-    <div id="lon">Lon: 0.0</div>
-    <div id="accuracy">Accuracy: 0.0</div>
-    <div id="heading">Heading: 0</div>
-    <div id="altitude">Altitude: 0</div>
-    <div id="speed">Speed: 0</div>
-    <div id="timestamp">Timestamp: 0</div>
-    <div id="time-diff">Time since last update: 0</div>
-    <hr>
+
+    <div class="panel panel-default">
+        <div id="mapDiv"></div>
+    </div>
+
+    <div class="panel panel-defaut">
+        <div class="panel-body">
+            <div class="progress">
+                <div id="progress-bar-main" class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">Raw Location Data</div>
+            <div class="well">
+                <div class="row">
+                    <ul class="list-group col-md-6">
+                        <li id="lat-lon" class="list-group-item list-group-item-info">Lat: 0.0, Lon: 0.0</li>
+                        <li id="accuracy" class="list-group-item list-group-item-info">Accuracy: 0.0</li>
+                        <li id="time-diff" class="list-group-item list-group-item-info">Time since last update: 0</li>
+                    </ul>
+                    <ul class="list-group col-md-6">
+                        <li id="heading" class="list-group-item list-group-item-success">Heading: 0</li>
+                        <li id="altitude" class="list-group-item list-group-item-success">Altitude: 0</li>
+                        <li id="speed" class="list-group-item list-group-item-success">Speed: 0</li>
+                    </ul>
+                </div>
+            </div>
+    </div>
+
     <div id="strd-accuracy">Standard Deviation (accuracy): 0</div>
     <div id="avg-accuracy">Average (accuracy): 0</div>
     <div id="accuracy-array-count">Accuracy Array Length: 0</div>
@@ -52,6 +86,18 @@
     <div id="avg-lat-lon">Average (lat, lon): 0, 0</div>
     <div id="lat-lon-array-count">Lat,Lon Array Length: 0, 0</div>
 
+    <script type="text/javascript">
+        var package_path = "//esri.github.com/bootstrap-map-js/src/js";
+        var dojoConfig = {
+            packages: [{
+                name: "application",
+                location: package_path
+            }]
+        };
+    </script>
+
+
+    <script src="js/GeolocationHelper.js"></script>
     <script src="http://js.arcgis.com/3.12/"></script>
     <script>
 
@@ -79,7 +125,7 @@
 
         // Algorithm
         var MAX_ACCURACY_ALLOWED = 100; // meters
-        var MAX_AVERAGE_ACCURACY = 20;  // meters
+        var MAX_MEDIAN_ACCURACY = 20;  // meters
         var MAX_STDDEVIATION_ACCURACY = 2.5;
         var MAX_STDDEVIATION_LAT = 0.0001;
         var MAX_STDDEVIATION_LON = 0.0001;
@@ -91,18 +137,23 @@
         var strdAccuracyDiv = document.getElementById("strd-accuracy");
         var avgAccuracyDiv = document.getElementById("avg-accuracy");
         var accuracyDiv = document.getElementById("accuracy");
-        var latDiv = document.getElementById("lat");
-        var lonDiv = document.getElementById("lon");
+        var latLonDiv = document.getElementById("lat-lon");
         var altitudeDiv = document.getElementById("altitude");
         var speedDiv = document.getElementById("speed");
-        var timestampDiv = document.getElementById("timestamp");
         var headingDiv = document.getElementById("heading");
         var timeDiffDiv = document.getElementById("time-diff");
         var accuracyArrCountDiv = document.getElementById("accuracy-array-count");
         var strdLatLonArrayDiv = document.getElementById("strd-lat-lon");
         var avgLatLonDiv = document.getElementById("avg-lat-lon");
-        var latLonArrayCountDiv = document.getElementById("lat-lon-array-count");
         var elapsedTimeDiv = document.getElementById("elapsed-time");
+        var progressBar = document.getElementById("progress-bar-main");
+
+        // Use mostly default settings
+        var filters = {
+            units: "K"
+        };
+
+        var geolocationHelper = new GeolocationHelper(filters);
 
         // We want to start the geolocation as early as possible in the application.
         startGeo();
@@ -110,82 +161,87 @@
         require([
             "esri/map",
             "esri/symbols/PictureMarkerSymbol",
+            "esri/symbols/SimpleLineSymbol",
             "esri/graphic",
             "esri/geometry/Point",
             "dojo/_base/Color",
-            "esri/geometry/Circle", "esri/symbols/SimpleFillSymbol",
+            "esri/geometry/Circle", "esri/symbols/SimpleFillSymbol","application/bootstrapmap",
             "dojo/domReady!"],
-                function(Map,PictureMarkerSymbol,Graphic,Point,Color,Circle,SimpleFillSymbol) {
+                function(Map,PictureMarkerSymbol,SimpleLineSymbol,Graphic,Point,Color,Circle,SimpleFillSymbol,Bootstrapmap) {
 
                     map = new Map("mapDiv", {
                         basemap: "topo",
                         center: [-122.45, 37.75], // longitude, latitude
-                        zoom: 16
+                        zoom: 11
                     });
-
-                    // Create the marker symbol
-                    _greenMarkerSymbol = new PictureMarkerSymbol({
-                        "angle":0,
-                        "xoffset":0,
-                        "yoffset":13,
-                        "type":"esriPMS",
-                        "url":"images/green-pin.png",
-                        "width":35,
-                        "height":35
-                    });
-
-                    _redMarkerSymbol = new PictureMarkerSymbol({
-                        "angle":0,
-                        "xoffset":0,
-                        "yoffset":13,
-                        "type":"esriPMS",
-                        "url":"images/red-pin.png",
-                        "width":35,
-                        "height":35
-                    });
-
-                    _yellowMarkerSymbol = new PictureMarkerSymbol({
-                        "angle":0,
-                        "xoffset":0,
-                        "yoffset":13,
-                        "type":"esriPMS",
-                        "url":"images/yellow-pin.png",
-                        "width":35,
-                        "height":35
-                    });
-
-                    _greenCircleSymbol = new SimpleFillSymbol().setColor(null).outline.setColor("green");
-                    _redCircleSymbol = new SimpleFillSymbol().setColor(null).outline.setColor("red");
-                    _yellowCircleSymbol = new SimpleFillSymbol().setColor(null).outline.setColor("yellow");
 
                     // If we have geolocation information ready the instant the map loads
                     // let's go ahead and drop a location marker on the map.
                     map.on("load",function(){
                         if(missMapDraw){
-                            drawLocationMarker(positionObject.lat,positionObject.lon);
+                            drawLocationMarker(positionObject.lat,positionObject.lon,positionObject.accuracy);
                             missMapDraw = false;
                         }
                     });
 
                     map.on("zoom-end",function(evt){
                         _zoomStop = evt.level;
-                    })
+                    });
+
+                    (function() {
+                        // Create the marker symbol
+                        _greenMarkerSymbol = new PictureMarkerSymbol({
+                            "angle":0,
+                            "xoffset":0,
+                            "yoffset":13,
+                            "type":"esriPMS",
+                            "url":"images/green-pin.png",
+                            "width":35,
+                            "height":35
+                        });
+
+                        _redMarkerSymbol = new PictureMarkerSymbol({
+                            "angle":0,
+                            "xoffset":0,
+                            "yoffset":13,
+                            "type":"esriPMS",
+                            "url":"images/red-pin.png",
+                            "width":35,
+                            "height":35
+                        });
+
+                        _yellowMarkerSymbol = new PictureMarkerSymbol({
+                            "angle":0,
+                            "xoffset":0,
+                            "yoffset":13,
+                            "type":"esriPMS",
+                            "url":"images/yellow-pin.png",
+                            "width":35,
+                            "height":35
+                        });
+
+                        _greenCircleSymbol = new SimpleFillSymbol().setColor(null).outline.setColor("green");
+                        _redCircleSymbol = new SimpleFillSymbol(SimpleFillSymbol.STYLE_SOLID,new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID,
+                                new Color([220,20,60]), 1),new Color([220,20,60,0.25]));
+                        _yellowCircleSymbol = new SimpleFillSymbol(SimpleFillSymbol.STYLE_SOLID,new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID,
+                                new Color([255,255,0]), 1),new Color([255,255,0,0.25]));
+                    }());
         });
 
-        function startGeo(){
+        function startGeo() {
 
             reset();
             startDifferenceTimer();
             startMasterTimer();
 
             _watchID = navigator.geolocation.watchPosition(
-                    geoResults,
-                    geoErrors,
-                    {
-                        timeout: 60000,
-                        enableHighAccuracy: true,
-                        maximumAge: 300000 //5 minutes
-                    }
+                geoResults,
+                geoErrors,
+                {
+                    timeout: 60000,
+                    enableHighAccuracy: true,
+                    maximumAge: 300000 //5 minutes
+                }
             );
         }
 
@@ -195,26 +251,41 @@
 
             positionObject = position;
 
-            var html5Lat = position.coords.latitude; //Get latitude
-            var html5Lon = position.coords.longitude; //Get longitude
-            var html5TimeStamp = position.timestamp; //Get timestamp
-            var html5Accuracy = position.coords.accuracy; 	//Get accuracy in meters
-            var html5Heading = position.coords.heading;
-            var html5Speed = position.coords.speed;
-            var html5Altitude = position.coords.altitude;
+            var lat = position.coords.latitude; //Get latitude
+            var lon = position.coords.longitude; //Get longitude
+            var timeStamp = position.timestamp; //Get timestamp
+            var accuracy = position.coords.accuracy; 	//Get accuracy in meters
+            var heading = position.coords.heading;
+            var speed = position.coords.speed;
+            var altitude = position.coords.altitude;
 
-            if(html5Lat != null) latDiv.innerHTML = "Lat: " + html5Lat.toString();
-            if(html5Lon != null) lonDiv.innerHTML = "Lon: " + html5Lon.toString();
-            if(html5TimeStamp != null) timestampDiv.innerHTML = "Timestamp: " + new Date(html5TimeStamp).toUTCString();
-            if(html5Accuracy != null) accuracyDiv.innerHTML = "Accuracy (m): " + html5Accuracy.toString();
-            if(html5Heading != null) headingDiv.innerHTML = "Heading: " + html5Heading.toString();
-            if(html5Speed != null) speedDiv.innerHTML = "Speed (m/s): " + html5Speed.toString();
-            if(html5Altitude != null) altitudeDiv.innerHTML = "Altitude: " + html5Altitude.toString();
+            if(lat != null && lon != null) latLonDiv.innerHTML = "Lat: " + lat.toString() + ", " + "Lon: " + lon.toString();
+//            if(timeStamp != null) timestampDiv.innerHTML = "Timestamp: " + new Date(timeStamp).toUTCString();
+            if(accuracy != null) accuracyDiv.innerHTML = "Accuracy (m): " + accuracy.toString();
+            if(heading != null) headingDiv.innerHTML = "Heading: " + heading.toString();
+            if(speed != null) speedDiv.innerHTML = "Speed (m/s): " + speed.toString();
+            if(altitude != null) altitudeDiv.innerHTML = "Altitude: " + altitude.toString();
 
-            accuracyArrayHandler(html5Accuracy,html5Lat,html5Lon);
+            geolocationHelper.rawValues(accuracy,lat,lon,timeStamp,function(result){
+                console.log("RESULT " + JSON.stringify(result));
+                drawLocationMarker(result.center_point.latitude,result.center_point.longitude,result.med_accuracy);
+
+
+                strdAccuracyDiv.innerHTML = "Standard Deviation accuracy: " + result.stddev_accuracy.toFixed(5).toString();
+                avgAccuracyDiv.innerHTML = "Median accuracy: " + result.med_accuracy.toFixed(5).toString();
+                accuracyArrCountDiv.innerHTML = "Accuracy Array Count: " + result.count.toString();
+
+                strdLatLonArrayDiv.innerHTML = "Standard Deviation (lat, lon): " + result.stddev_lat.toFixed(5).toString() +
+                ", " + result.stddev_lon.toFixed(5).toString();
+                avgLatLonDiv.innerHTML = "Average (lat, lon): " + result.med_lat.toFixed(5).toString() +
+                ", " + result.med_lon.toFixed(5).toString();
+
+                progressBar.style.width = result.count.toString() + "%";
+
+            });
         }
 
-        function drawLocationMarker(lat, lon){
+        function drawLocationMarker(lat, lon, med_accuracy){
 
             if(map != null && map.graphics != null){
                 require([
@@ -234,34 +305,41 @@
                                 var finalMarkerSymbol = null;
                                 var finalCircleSymbol = null;
 
-                                if(avg_accuracy <= 10){
+                                if(med_accuracy <= 10){
                                     finalMarkerSymbol = _greenMarkerSymbol;
                                     finalCircleSymbol = _greenCircleSymbol;
+                                    progressBar.className = "progress-bar progress-bar-success";
                                 }
-                                if(avg_accuracy <= 30){
+                                if(med_accuracy <= 30){
                                     finalMarkerSymbol = _yellowMarkerSymbol;
                                     finalCircleSymbol = _yellowCircleSymbol;
+                                    progressBar.className = "progress-bar progress-bar-warning";
                                 }
                                 else{
                                     finalMarkerSymbol = _redMarkerSymbol;
                                     finalCircleSymbol = _redCircleSymbol;
+                                    progressBar.className = "progress-bar progress-bar-danger";
                                 }
 
-                                var circle = new Circle([lon,lat],{
-                                    radius: avg_accuracy,
+                                var circle = new Circle({
+                                    center: [lon,lat],
+                                    radius: med_accuracy,
                                     geodesic: true
                                 });
 
                                 map.graphics.add(new Graphic(circle, finalCircleSymbol));
                                 map.graphics.add(new Graphic(geometry, finalMarkerSymbol));
-                                map.centerAndZoom(geometry, _zoomStop);
+
+                                map.setExtent(circle.getExtent());
+
+//                                map.centerAndZoom(geometry, _zoomStop);
                             }
                         }
                 )
             }
             else{
                 missMapDraw = true;
-                positionObject = {lat:lat,lon:lon};
+                positionObject = {lat:lat,lon:lon,accuracy:med_accuracy};
             }
         }
 
@@ -269,7 +347,7 @@
 
             var startDate = new Date();
 
-            masterTimer = new Worker("background-timer.js");
+            masterTimer = new Worker("js/background-timer.js");
             masterTimer.onmessage = function(event){
                 elapsedTimeDiv.innerHTML = "Elapsed: " + elapsedTime(new Date(Math.abs(event.data - startDate.getTime())),true);;
             }
@@ -283,7 +361,7 @@
 
             var startDate = new Date();
 
-            differenceTimer = new Worker("background-timer.js");
+            differenceTimer = new Worker("js/background-timer.js");
 
             differenceTimer.onmessage = function(event){
                 timeDiffDiv.innerHTML = "Time since last update (ms): " + elapsedTime(new Date(Math.abs(event.data - startDate.getTime())),false);
@@ -345,68 +423,9 @@
 
         //
         //
-        // ALGORITHM FOR HANDLING ACCURACY
-        //
-        //
-
-        function accuracyArrayHandler(accuracy,lat,lon){
-
-            // Manage our array size to keep from blowing up memory
-            if(accuracyArray.length > maxArraySize){
-                accuracyArray.shift();
-            }
-
-            // REJECT any lat lon values if accuracy is greater than our maximum acceptable
-            if(accuracy < MAX_ACCURACY_ALLOWED){
-                accuracyArray.push(accuracy);
-
-                avg_accuracy = average(accuracyArray);
-                stddev_accuracy = standardDeviation(accuracyArray);
-
-                // We can process these lat/lon values
-                latLonHandler(lat,lon);
-            }
-
-            strdAccuracyDiv.innerHTML = "Standard Deviation (accuracy): " + stddev_accuracy.toFixed(5).toString();
-            avgAccuracyDiv.innerHTML = "Average (accuracy): " + avg_accuracy.toFixed(5).toString();
-            accuracyArrCountDiv.innerHTML = "Accuracy Array Count: " + accuracyArray.length.toString();
-        }
-
-        //
-        //
         // ALGORITHM FOR HANDLING LATITUDE/LONGITUDE VALUES
         //
         //
-
-        function latLonHandler(lat,lon){
-
-            // Manage our array size to keep from blowing up memory
-            if(latArray.length > maxArraySize){
-                latArray.shift();
-            }
-            if(lonArray.length > maxArraySize){
-                lonArray.shift();
-            }
-            latArray.push(lat);
-            lonArray.push(lon);
-
-            avg_lat = average(latArray);
-            avg_lon = average(lonArray);
-            stddev_lat = standardDeviation(latArray);
-            stddev_lon = standardDeviation(lonArray);
-
-            strdLatLonArrayDiv.innerHTML = "Standard Deviation (lat, lon): " + stddev_lat.toFixed(5).toString() +
-                ", " + stddev_lon.toFixed(5).toString();
-            avgLatLonDiv.innerHTML = "Average (lat, lon): " + avg_lat.toFixed(5).toString() +
-                ", " + avg_lon.toFixed(5).toString();
-            latLonArrayCountDiv.innerHTML = "Lat, Lon Array Length: " + latArray.length.toString() +
-                ", " + lonArray.length.toString();
-
-
-            // Now we draw the location marker!
-            // Use average values of latitude and longitude
-            drawLocationMarker(avg_lat,avg_lon);
-        }
 
         function geoErrors(error){
             switch(error.code){
@@ -433,36 +452,10 @@
             navigator.geolocation.clearWatch(_watchID);
         }
 
-        /**
-         * standardDeviation() and average() functions courtesy of:
-         * http://derickbailey.com/2014/09/21/calculating-standard-deviation-with-array-map-and-array-reduce-in-javascript/
-         * @param values Array
-         * @returns {number}
-         */
-        function standardDeviation(values){
-            var avg = average(values);
-
-            var squareDiffs = values.map(function(value){
-                var diff = value - avg;
-                var sqrDiff = diff * diff;
-                return sqrDiff;
-            });
-
-            var avgSquareDiff = average(squareDiffs);
-
-            var stdDev = Math.sqrt(avgSquareDiff);
-            return stdDev;
-        }
-
-        function average(data){
-            var sum = data.reduce(function(sum, value){
-                return sum + value;
-            }, 0);
-
-            var avg = sum / data.length;
-            return avg;
-        }
-
     </script>
+    <!-- jQuery (for Bootstrap's JavaScript plugins) -->
+    <script src="http://code.jquery.com/jquery-1.11.1.min.js"></script>
+    <!-- Include all  plugins or individual files as needed -->
+    <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
 </body>
 </html>

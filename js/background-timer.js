@@ -1,5 +1,5 @@
-
-var timer = setInterval(function(){
+var INTERVAL = 1; //seconds
+setInterval(function(){
     var date = new Date();
     postMessage(date.getTime());
-},1);
+},INTERVAL);
