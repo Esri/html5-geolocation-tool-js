@@ -60,7 +60,7 @@ var GeolocationHelper = function(/* Object */ filters) {
      * @param timestamp
      * @param callback
      */
-    this.rawValues = function(accuracy, lat, lon, timestamp, callback) {
+    this.process = function(accuracy, lat, lon, timestamp, callback) {
 
         this.manageArraySize();
 
@@ -246,6 +246,14 @@ var GeolocationHelper = function(/* Object */ filters) {
 
         return this. median(diff);
 
+    };
+
+    /**
+     * Returns an array of Object {latitude: y, longitude: x}
+     * @returns {Array}
+     */
+    this.getLatLonArray = function(){
+        return latLonArray;
     };
 
     /**
