@@ -41,7 +41,7 @@
                     <button type="button" class="btn btn-warning" onclick="reset()"><span class="glyphicon glyphicon-refresh" aria-hidden="true"></span></button>
                     <button class="btn btn-primary" type="button">
                         <span class="glyphicon glyphicon-time" aria-hidden="true">
-                            <span id="elapsed-time" class="badge">00:00:00:0000</span>
+                            <span id="elapsed-time" class="badge">00:00:0000</span>
                         </span>
                     </button>
                 </div>
@@ -475,15 +475,6 @@
         function showAverageCenter() {
             if(showAvgCenterCheckBox.checked) {
                 useActualLatLon = true;
-
-                require(["esri/graphic","esri/geometry/Point"],
-                    function(Graphic,Point){
-                        var ptsArray = geolocationHelper.getLatLonArray();
-                        ptsArray.forEach(function(entry){
-                            var pt = new Point(entry.longitude, entry.latitude);
-                            map.graphics.add(new Graphic(pt, _smallCircleSymbol));
-                        });
-                    });
             }
             else {
                 useActualLatLon = false;
@@ -493,9 +484,25 @@
         function showAllPoints() {
             if(showAllPtsCheckBox.checked) {
                 drawAllPoints = true;
+
+                require(["esri/graphic","esri/geometry/Point"],
+                        function(Graphic,Point){
+                            var ptsArray = geolocationHelper.getLatLonArray();
+                            ptsArray.forEach(function(entry){
+                                var pt = new Point(entry.longitude, entry.latitude);
+                                pt._tempType = "tempMarker";
+                                map.graphics.add(new Graphic(pt, _smallCircleSymbol));
+                            });
+                        });
             }
             else {
                 drawAllPoints = false;
+
+                map.graphics.graphics.forEach(function(graphic){
+                    if(graphic.hasOwnProperty("geometry") && graphic.geometry._tempType === "tempMarker") {
+                        map.graphics.remove(graphic);
+                    }
+                });
             }
         }
 
