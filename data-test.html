@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html>
 <!--
-
+// Author: @agup
 //
 // EXPERIMENTAL!!
-// This is a demonstration app to demonstrate a very simple
-// algorithm for smoothing out geolocation results to
-// capture a single location.
+// This is a demonstration app to demonstrate a very simple template
+// for capturing point locations in the field.
 //
 
 -->
@@ -27,6 +26,8 @@
         #mapDiv{
             height: 300px;
             width: 100%;
+            padding-left: 20px;
+            padding-right: 20px;
         }
     </style>
 </head>
@@ -35,11 +36,13 @@
         <div class="panel-body">
             <div class="row">
                 <div class="col-md-12">
-                    <button type="button" class="btn btn-danger" onclick="stopAll()">Stop!</button>
-                    <button type="button" class="btn btn-warning" onclick="reset()">Reset!</button>
-                    <button type="button" class="btn btn-success" onclick="startGeo()">Restart!</button>
+                    <button id="start-geo-btn" type="button" class="btn btn-default" onclick="startGeo()"><span class="glyphicon glyphicon-screenshot" aria-hidden="true"></span></button>
+                    <button type="button" class="btn btn-danger" onclick="stopAll()"><span class="glyphicon glyphicon-off" aria-hidden="true"></span></button>
+                    <button type="button" class="btn btn-warning" onclick="reset()"><span class="glyphicon glyphicon-refresh" aria-hidden="true"></span></button>
                     <button class="btn btn-primary" type="button">
-                        <span id="elapsed-time" class="badge">00:00:00:0000</span>
+                        <span class="glyphicon glyphicon-time" aria-hidden="true">
+                            <span id="elapsed-time" class="badge">00:00:00:0000</span>
+                        </span>
                     </button>
                 </div>
             </div>
@@ -52,9 +55,29 @@
 
     <div class="panel panel-defaut">
         <div class="panel-body">
+            <div class="well">
+                <form class="form-inline">
+                    <div class="checkbox">
+                        <label>
+                            <input id="average-center" type="checkbox" checked onchange="showAverageCenter()"> Use averaged lat/lon
+                        </label>
+                    </div>
+                    <div class="checkbox">
+                        <label>
+                            <input id="show-all-pts" type="checkbox" onchange="showAllPoints()">  Show all points
+                        </label>
+                    </div>
+                    <div class="checkbox">
+                        <label>
+                            <input id="show-circle" type="checkbox" checked onchange="showCircle()">  Show circle
+                        </label>
+                    </div>
+                </form>
+            </div>
             <div class="progress">
-                <div id="progress-bar-main" class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
-
+                <!-- Make sure you set the max value to the same as the GeolocationHelper.MAX_ARRAY_SIZE -->
+                <div id="progress-bar-main" class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="25" style="width: 0%">
+                    buffer
                 </div>
             </div>
         </div>
@@ -65,7 +88,7 @@
             <div class="well">
                 <div class="row">
                     <ul class="list-group col-md-6">
-                        <li id="lat-lon" class="list-group-item list-group-item-info">Lat: 0.0, Lon: 0.0</li>
+                        <li id="lat-lon"  class="list-group-item list-group-item-info">Lat: 0.0, Lon: 0.0</li>
                         <li id="accuracy" class="list-group-item list-group-item-info">Accuracy: 0.0</li>
                         <li id="time-diff" class="list-group-item list-group-item-info">Time since last update: 0</li>
                     </ul>
@@ -111,6 +134,9 @@
         var _watchID = null;
         var _zoomStop = 17;
         var _dateStart = new Date();
+        var __currentTime = _dateStart.getTime();
+
+        var startDate = new Date();
         var accuracyArray = [];
         var latArray = [];
         var lonArray = [];
@@ -121,17 +147,17 @@
         var differenceTimer = null;
         var masterTimer = null;
         var map = null, _greenMarkerSymbol = null, _redMarkerSymbol = null, _yellowMarkerSymbol = null;
-        var _greenCircleSymbol = null, _redCircleSymbol = null, _yellowCircleSymbol = null;
+        var _greenCircleSymbol = null, _redCircleSymbol = null, _yellowCircleSymbol = null, _smallCircleSymbol = null, _lastCircle = null;
+        var finalMarkerSymbol = null;
+        var finalCircleSymbol = null;
 
-        // Algorithm
-        var MAX_ACCURACY_ALLOWED = 100; // meters
-        var MAX_MEDIAN_ACCURACY = 20;  // meters
-        var MAX_STDDEVIATION_ACCURACY = 2.5;
-        var MAX_STDDEVIATION_LAT = 0.0001;
-        var MAX_STDDEVIATION_LON = 0.0001;
         var stddev_accuracy = 0, stddev_lat = 0, stddev_lon = 0;
         var avg_accuracy = 0, avg_lat = 0, avg_lon = 0;
 
+        // User controls
+        var drawCircle = true;
+        var drawAllPoints = false;
+        var useActualLatLon = false;
 
         // Divs
         var strdAccuracyDiv = document.getElementById("strd-accuracy");
@@ -148,6 +174,12 @@
         var elapsedTimeDiv = document.getElementById("elapsed-time");
         var progressBar = document.getElementById("progress-bar-main");
 
+        var startGeoBtn = document.getElementById("start-geo-btn");
+
+        var showCircleCheckBox = document.getElementById("show-circle");
+        var showAllPtsCheckBox = document.getElementById("show-all-pts");
+        var showAvgCenterCheckBox = document.getElementById("average-center");
+
         // Use mostly default settings
         var filters = {
             units: "K"
@@ -161,13 +193,14 @@
         require([
             "esri/map",
             "esri/symbols/PictureMarkerSymbol",
+            "esri/symbols/SimpleMarkerSymbol",
             "esri/symbols/SimpleLineSymbol",
             "esri/graphic",
             "esri/geometry/Point",
             "dojo/_base/Color",
             "esri/geometry/Circle", "esri/symbols/SimpleFillSymbol","application/bootstrapmap",
             "dojo/domReady!"],
-                function(Map,PictureMarkerSymbol,SimpleLineSymbol,Graphic,Point,Color,Circle,SimpleFillSymbol,Bootstrapmap) {
+                function(Map,PictureMarkerSymbol,SimpleMarkerSymbol,SimpleLineSymbol,Graphic,Point,Color,Circle,SimpleFillSymbol,Bootstrapmap) {
 
                     map = new Map("mapDiv", {
                         basemap: "topo",
@@ -225,13 +258,24 @@
                                 new Color([220,20,60]), 1),new Color([220,20,60,0.25]));
                         _yellowCircleSymbol = new SimpleFillSymbol(SimpleFillSymbol.STYLE_SOLID,new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID,
                                 new Color([255,255,0]), 1),new Color([255,255,0,0.25]));
+
+                        _smallCircleSymbol = new SimpleMarkerSymbol(
+                                SimpleMarkerSymbol.STYLE_CIRCLE,
+                                12,
+                                new SimpleLineSymbol(
+                                        SimpleLineSymbol.STYLE_NULL,
+                                        new Color([247, 34, 101, 0.9]),
+                                        1
+                                ),
+                                new Color([207, 34, 171, 0.5])
+                        );
+
                     }());
         });
 
         function startGeo() {
 
             reset();
-            startDifferenceTimer();
             startMasterTimer();
 
             _watchID = navigator.geolocation.watchPosition(
@@ -247,13 +291,11 @@
 
         function geoResults(position){
 
-            restartDifferenceTimer();
-
             positionObject = position;
 
-            var lat = position.coords.latitude; //Get latitude
-            var lon = position.coords.longitude; //Get longitude
-            var timeStamp = position.timestamp; //Get timestamp
+            var lat = position.coords.latitude;         //Get latitude
+            var lon = position.coords.longitude;        //Get longitude
+            var timeStamp = position.timestamp;         //Get timestamp
             var accuracy = position.coords.accuracy; 	//Get accuracy in meters
             var heading = position.coords.heading;
             var speed = position.coords.speed;
@@ -266,10 +308,17 @@
             if(speed != null) speedDiv.innerHTML = "Speed (m/s): " + speed.toString();
             if(altitude != null) altitudeDiv.innerHTML = "Altitude: " + altitude.toString();
 
-            geolocationHelper.rawValues(accuracy,lat,lon,timeStamp,function(result){
+            geolocationHelper.process(accuracy,lat,lon,timeStamp,function(result){
                 console.log("RESULT " + JSON.stringify(result));
-                drawLocationMarker(result.center_point.latitude,result.center_point.longitude,result.med_accuracy);
 
+                startGeoBtn.className = "btn btn-success";
+
+                if(useActualLatLon) {
+                    drawLocationMarker(lat,lon,accuracy);
+                }
+                else {
+                    drawLocationMarker(result.center_point.latitude,result.center_point.longitude,result.med_accuracy);
+                }
 
                 strdAccuracyDiv.innerHTML = "Standard Deviation accuracy: " + result.stddev_accuracy.toFixed(5).toString();
                 avgAccuracyDiv.innerHTML = "Median accuracy: " + result.med_accuracy.toFixed(5).toString();
@@ -281,6 +330,9 @@
                 ", " + result.med_lon.toFixed(5).toString();
 
                 progressBar.style.width = result.count.toString() + "%";
+
+                var date = new Date();
+                __currentTime = date.getTime();
 
             });
         }
@@ -302,8 +354,8 @@
                             // Have to wait for map to initialize
                             if(map != null){
 
-                                var finalMarkerSymbol = null;
-                                var finalCircleSymbol = null;
+//                                var finalMarkerSymbol = null;
+//                                var finalCircleSymbol = null;
 
                                 if(med_accuracy <= 10){
                                     finalMarkerSymbol = _greenMarkerSymbol;
@@ -321,16 +373,29 @@
                                     progressBar.className = "progress-bar progress-bar-danger";
                                 }
 
-                                var circle = new Circle({
-                                    center: [lon,lat],
-                                    radius: med_accuracy,
-                                    geodesic: true
-                                });
+                                if(drawCircle){
+                                    _lastCircle = new Circle({
+                                        center: [lon,lat],
+                                        radius: med_accuracy,
+                                        geodesic: true
+                                    });
 
-                                map.graphics.add(new Graphic(circle, finalCircleSymbol));
+                                    _lastCircle._tempType = "circle"; // so we can identify it on the graphicsLayer.
+
+                                    map.graphics.add(new Graphic(_lastCircle, finalCircleSymbol));
+                                }
+
+                                if(drawAllPoints){
+                                    var ptsArray = geolocationHelper.getLatLonArray();
+                                    ptsArray.forEach(function(entry){
+                                        var pt = new Point(entry.longitude, entry.latitude);
+                                        map.graphics.add(new Graphic(pt, _smallCircleSymbol));
+                                    });
+                                }
+
                                 map.graphics.add(new Graphic(geometry, finalMarkerSymbol));
 
-                                map.setExtent(circle.getExtent());
+                                map.setExtent(_lastCircle.getExtent());
 
 //                                map.centerAndZoom(geometry, _zoomStop);
                             }
@@ -345,11 +410,12 @@
 
         function startMasterTimer(){
 
-            var startDate = new Date();
-
             masterTimer = new Worker("js/background-timer.js");
             masterTimer.onmessage = function(event){
-                elapsedTimeDiv.innerHTML = "Elapsed: " + elapsedTime(new Date(Math.abs(event.data - startDate.getTime())),true);;
+                elapsedTimeDiv.innerHTML = elapsedTime(new Date(Math.abs(event.data - startDate.getTime())),true);
+
+                var endTime = new Date();
+                timeDiffDiv.innerHTML = "Time since last update (ms): " + elapsedTime(new Date(Math.abs(endTime.getTime() - __currentTime)),true);
             }
         }
 
@@ -357,32 +423,17 @@
             masterTimer.terminate();
         }
 
-        function startDifferenceTimer(){
-
-            var startDate = new Date();
-
-            differenceTimer = new Worker("js/background-timer.js");
-
-            differenceTimer.onmessage = function(event){
-                timeDiffDiv.innerHTML = "Time since last update (ms): " + elapsedTime(new Date(Math.abs(event.data - startDate.getTime())),false);
-            };
-        }
-
         function restartAll(){
-            differenceTimer.terminate();
             masterTimer.terminate();
-            startDifferenceTimer();
             startMasterTimer();
         }
 
-        function restartDifferenceTimer(){
-            differenceTimer.terminate();
-            startDifferenceTimer();
-        }
-
         function stopTimers(){
-            differenceTimer.terminate();
-            masterTimer.terminate();
+            if(masterTimer) {
+                masterTimer.terminate();
+            }
+            masterTimer = null;
+
         }
 
         /**
@@ -418,14 +469,55 @@
             accuracyArray = [];
             latArray = [];
             lonArray = [];
-            if(map !== null) map.graphics.clear();
+            if(map) map.graphics.clear();
         }
 
-        //
-        //
-        // ALGORITHM FOR HANDLING LATITUDE/LONGITUDE VALUES
-        //
-        //
+        function showAverageCenter() {
+            if(showAvgCenterCheckBox.checked) {
+                useActualLatLon = true;
+
+                require(["esri/graphic","esri/geometry/Point"],
+                    function(Graphic,Point){
+                        var ptsArray = geolocationHelper.getLatLonArray();
+                        ptsArray.forEach(function(entry){
+                            var pt = new Point(entry.longitude, entry.latitude);
+                            map.graphics.add(new Graphic(pt, _smallCircleSymbol));
+                        });
+                    });
+            }
+            else {
+                useActualLatLon = false;
+            }
+        }
+
+        function showAllPoints() {
+            if(showAllPtsCheckBox.checked) {
+                drawAllPoints = true;
+            }
+            else {
+                drawAllPoints = false;
+            }
+        }
+
+        function showCircle(evt) {
+            if(showCircleCheckBox.checked){
+                drawCircle = true;
+
+                require(["esri/graphic"],
+                        function(Graphic){
+                            map.graphics.add(new Graphic(_lastCircle, finalCircleSymbol));
+                        });
+            }
+            else {
+                drawCircle = false;
+
+                map.graphics.graphics.forEach(function(graphic){
+                   if(graphic.hasOwnProperty("geometry") && graphic.geometry._tempType === "circle") {
+                       map.graphics.remove(graphic);
+                   }
+                });
+            }
+        }
 
         function geoErrors(error){
             switch(error.code){
@@ -450,6 +542,8 @@
         function stopAll(){
             stopTimers();
             navigator.geolocation.clearWatch(_watchID);
+            _watchID = null;
+            startGeoBtn.className = "btn btn-default";
         }
 
     </script>
