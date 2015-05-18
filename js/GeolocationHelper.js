@@ -1,5 +1,11 @@
 /**
- * A library for normalizing HTML Geolocation API raw data
+ * A library for normalizing HTML Geolocation API raw data. Original use case is for determining a single location.
+ *
+ * ASSUMPTIONS:
+ * 1) Your data won't cross the date line.
+ * 2) Ignores time weighted values because we have no control over the interval at which points are retrieved from
+ * the Geolocation API.
+ *
  * @author @agup
  * @param filters Required. Either set properties to a value or null. If a filter is set to null it will be ignored.
  * @constructor
@@ -38,6 +44,12 @@ var GeolocationHelper = function(/* Object */ filters) {
     var lonArray = [];
     var latLonArray = [];
     var distanceArray = []; // an array of distances between each successive lat and lon
+
+    var _currentValues = {};
+
+    if(!window.localStorage) {
+        console.error("WARNING: GeolocationHelper.js requires local storage.");
+    }
 
     /**
      * Reset all internal arrays to empty.
@@ -110,7 +122,6 @@ var GeolocationHelper = function(/* Object */ filters) {
     this.filter = function(accuracy, callback) {
 
         var reject = false;
-        var payload = {};
 
         if (accuracy > this.MAX_ACCURACY) {
             reject = true;
@@ -128,21 +139,34 @@ var GeolocationHelper = function(/* Object */ filters) {
             reject = true;
         }
 
-        payload.reject  = reject;
-        payload.count = latArray.length;
-        payload.med_lat = med_lat;
-        payload.med_lon = med_lon;
-        payload.med_accuracy = med_accuracy;
-        payload.med_speed = med_speed;
-        payload.med_distance = med_distance;
-        payload.med_time_diff = med_timediff;
-        payload.stddev_lat = stddev_lat;
-        payload.stddev_lon = stddev_lon;
-        payload.stddev_accuracy = stddev_accuracy;
-        payload.stddev_distance = stddev_distance;
-        payload.center_point = this.getCenter(latLonArray);
+        _currentValues.reject  = reject;
+        _currentValues.count = latArray.length;
+        _currentValues.med_lat = med_lat;                  // Median latitude
+        _currentValues.med_lon = med_lon;                  // Median longitude
+        _currentValues.med_accuracy = med_accuracy;        // Median accuracy
+        _currentValues.med_speed = med_speed;              // Median speed
+        _currentValues.med_distance = med_distance;        // Median distance between values in the array
+        _currentValues.med_time_diff = med_timediff;       // Median difference in time between geolocation results
+        _currentValues.stddev_lat = stddev_lat;            // Standard deviation latitude
+        _currentValues.stddev_lon = stddev_lon;            // Standard deviation longitude
+        _currentValues.stddev_accuracy = stddev_accuracy;  // Standard deviation accuracy
+        _currentValues.stddev_distance = stddev_distance;  // Standard deviation distance between values in the array
+        _currentValues.center_point = this.getCenter(latLonArray);
 
-        callback(payload);
+        localStorage.geolocationObject = JSON.stringify(_currentValues);
+
+        callback(_currentValues);
+    };
+
+    this.getLocationInfo = function(){
+
+        if(Object.keys(_currentValues).length === 0) {
+            if(localStorage.geolocationObject) {
+                _currentValues = localStorage.geolocationObject;
+            }
+        }
+
+        return _currentValues;
     };
 
     this.manageArraySize = function(){
@@ -256,8 +280,13 @@ var GeolocationHelper = function(/* Object */ filters) {
         return latLonArray;
     };
 
+    this.getMidPoint = function(){
+        return _currentValues.center_point;
+    };
+
     /**
      * All credits: https://github.com/manuelbieh/Geolib/blob/master/src/geolib.js
+     * Reference: http://www.geomidpoint.com/calculation.html
      * @param coords
      * @returns {*}
      */
