@@ -4,8 +4,7 @@
 // Author: @agup
 //
 // EXPERIMENTAL!!
-// This is a demonstration app to demonstrate a very simple template
-// for capturing point locations in the field.
+// This is a demonstration app for capturing point locations in the field.
 //
 
 -->
@@ -28,6 +27,11 @@
             width: 100%;
             padding-left: 20px;
             padding-right: 20px;
+        }
+        /* Override bootstrap progress bar color */
+        .progress-bar-warning {
+            background-color: yellow;
+            color: black;
         }
     </style>
 </head>
@@ -56,6 +60,12 @@
     <div class="panel panel-defaut">
         <div class="panel-body">
             <div class="well">
+                <div class="progress">
+                    <!-- Make sure you set the max value to the same as the GeolocationHelper.MAX_ARRAY_SIZE -->
+                    <div id="progress-bar-main" class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
+                        buffer
+                    </div>
+                </div>
                 <form class="form-inline">
                     <div class="checkbox">
                         <label>
@@ -64,50 +74,64 @@
                     </div>
                     <div class="checkbox">
                         <label>
-                            <input id="show-all-pts" type="checkbox" onchange="showAllPoints()">  Show all points
+                            <input id="show-circle" type="checkbox" checked onchange="showCircle()">  Show circle
                         </label>
                     </div>
                     <div class="checkbox">
                         <label>
-                            <input id="show-circle" type="checkbox" checked onchange="showCircle()">  Show circle
+                            <input id="show-all-pts" type="checkbox" onchange="showAllPoints()">  Show all points
                         </label>
                     </div>
                 </form>
             </div>
-            <div class="progress">
-                <!-- Make sure you set the max value to the same as the GeolocationHelper.MAX_ARRAY_SIZE -->
-                <div id="progress-bar-main" class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="25" style="width: 0%">
-                    buffer
-                </div>
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">Processed Location Data</div>
+        <div class="well">
+            <div class="row">
+                <ul class="list-group col-md-6">
+                    <div id="avg-lat-lon" class="list-group-item list-group-item-info">Average (lat, lon): 0, 0</div>
+                    <div id="avg-accuracy" class="list-group-item list-group-item-info">Average (accuracy): 0</div>
+                </ul>
+                <ul class="list-group col-md-6">
+                    <div id="strd-lat-lon"class="list-group-item list-group-item-success">Standard Deviation (lat, lon): 0, 0</div>
+                    <div id="strd-accuracy" class="list-group-item list-group-item-success">Standard Deviation (accuracy): 0</div>
+                </ul>
             </div>
         </div>
     </div>
 
     <div class="panel panel-default">
         <div class="panel-heading">Raw Location Data</div>
-            <div class="well">
-                <div class="row">
-                    <ul class="list-group col-md-6">
-                        <li id="lat-lon"  class="list-group-item list-group-item-info">Lat: 0.0, Lon: 0.0</li>
-                        <li id="accuracy" class="list-group-item list-group-item-info">Accuracy: 0.0</li>
-                        <li id="time-diff" class="list-group-item list-group-item-info">Time since last update: 0</li>
-                    </ul>
-                    <ul class="list-group col-md-6">
-                        <li id="heading" class="list-group-item list-group-item-success">Heading: 0</li>
-                        <li id="altitude" class="list-group-item list-group-item-success">Altitude: 0</li>
-                        <li id="speed" class="list-group-item list-group-item-success">Speed: 0</li>
-                    </ul>
-                </div>
+        <div class="well">
+            <div class="row">
+                <ul class="list-group col-md-6">
+                    <li id="lat-lon"  class="list-group-item list-group-item-info">Lat: 0.0, Lon: 0.0</li>
+                    <li id="accuracy" class="list-group-item list-group-item-info">Accuracy: 0.0</li>
+                    <li id="time-diff" class="list-group-item list-group-item-info">Time since last update: 0</li>
+                </ul>
+                <ul class="list-group col-md-6">
+                    <li id="heading" class="list-group-item list-group-item-success">Heading: 0</li>
+                    <li id="altitude" class="list-group-item list-group-item-success">Altitude: 0</li>
+                    <li id="speed" class="list-group-item list-group-item-success">Speed: 0</li>
+                </ul>
             </div>
+        </div>
     </div>
 
-    <div id="strd-accuracy">Standard Deviation (accuracy): 0</div>
-    <div id="avg-accuracy">Average (accuracy): 0</div>
-    <div id="accuracy-array-count">Accuracy Array Length: 0</div>
-    <hr>
-    <div id="strd-lat-lon">Standard Deviation (lat, lon): 0, 0</div>
-    <div id="avg-lat-lon">Average (lat, lon): 0, 0</div>
-    <div id="lat-lon-array-count">Lat,Lon Array Length: 0, 0</div>
+    <div class="panel panel-default">
+        <div class="panel-heading">Set number of points to process:</div>
+        <div class="well">
+            <div class="btn-toolbar" role="toolbar">
+                <button id="btn-choose-15" type="button" class="btn btn-info">15</button>
+                <button id="btn-choose-25" type="button" disabled class="btn btn-default">25</button>
+                <button id="btn-choose-35" type="button" class="btn btn-info">35</button>
+                <button id="btn-choose-45" type="button" class="btn btn-info">45</button>
+            </div>
+        </div>
+    </div>
 
     <script type="text/javascript">
         var package_path = "//esri.github.com/bootstrap-map-js/src/js";
@@ -126,7 +150,7 @@
 
         //
         // EXPERIMENTAL!!
-        // This is a demonstration app to demonstrate a very simple
+        // This app demonstrates a very simple
         // algorithm for smoothing out geolocation results to
         // capture a single location.
         //
@@ -168,8 +192,7 @@
         var speedDiv = document.getElementById("speed");
         var headingDiv = document.getElementById("heading");
         var timeDiffDiv = document.getElementById("time-diff");
-        var accuracyArrCountDiv = document.getElementById("accuracy-array-count");
-        var strdLatLonArrayDiv = document.getElementById("strd-lat-lon");
+        var strdDevLatLonArrayDiv = document.getElementById("strd-lat-lon");
         var avgLatLonDiv = document.getElementById("avg-lat-lon");
         var elapsedTimeDiv = document.getElementById("elapsed-time");
         var progressBar = document.getElementById("progress-bar-main");
@@ -322,14 +345,15 @@
 
                 strdAccuracyDiv.innerHTML = "Standard Deviation accuracy: " + result.stddev_accuracy.toFixed(5).toString();
                 avgAccuracyDiv.innerHTML = "Median accuracy: " + result.med_accuracy.toFixed(5).toString();
-                accuracyArrCountDiv.innerHTML = "Accuracy Array Count: " + result.count.toString();
 
-                strdLatLonArrayDiv.innerHTML = "Standard Deviation (lat, lon): " + result.stddev_lat.toFixed(5).toString() +
+                strdDevLatLonArrayDiv.innerHTML = "Standard Deviation (lat, lon): " + result.stddev_lat.toFixed(5).toString() +
                 ", " + result.stddev_lon.toFixed(5).toString();
-                avgLatLonDiv.innerHTML = "Average (lat, lon): " + result.med_lat.toFixed(5).toString() +
-                ", " + result.med_lon.toFixed(5).toString();
 
-                progressBar.style.width = result.count.toString() + "%";
+                avgLatLonDiv.innerHTML = "Average Center (lat, lon): " + result.center_point.latitude +
+                ", " + result.center_point.longitude;
+
+                progressBar.style.width = (result.count / geolocationHelper.MAX_ARRAY_SIZE * 100).toString() + "%";
+                progressBar.innerHTML = result.count + " / " + geolocationHelper.MAX_ARRAY_SIZE;
 
                 var date = new Date();
                 __currentTime = date.getTime();
