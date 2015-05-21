@@ -1,0 +1,337 @@
+/**
+ * A library for normalizing HTML Geolocation API raw data. Original use case is for determining a single location.
+ *
+ * ASSUMPTIONS:
+ * 1) Your data won't cross the date line.
+ * 2) Ignores time weighted values because we have no control over the interval at which points are retrieved from
+ * the Geolocation API.
+ *
+ * @author @agup
+ * @param filters Required. Either set properties to a value or null. If a filter is set to null it will be ignored.
+ * @constructor
+ */
+var GeolocationHelper = function(/* Object */ filters) {
+
+    // AVAILABLE FILTERS
+    this.UNITS;
+    this.MAX_ACCURACY;
+    this.MAX_MEDIAN_ACCURACY;
+    this.MAX_STDDEVIATION_ACCURACY;
+    this.MAX_STDDEVIATION_LAT;
+    this.MAX_STDDEVIATION_LON;
+    this.MAX_ARRAY_SIZE;
+
+    if(!filters){
+        filters = {};
+    }
+
+    // APPLY FILTERS IF NECESSARY. Otherwise use default values.
+
+    "UNITS" in filters ? this.UNITS = filters.UNITS : this.UNITS = "M"; // M = miles, K = km, N = nautical miles
+    "MAX_ACCURACY" in filters ? this.MAX_ACCURACY = filters.MAX_ACCURACY : this.MAX_ACCURACY = 100 ;
+    "MAX_MEDIAN_ACCURACY" in filters ? this.MAX_MEDIAN_ACCURACY = filters.MAX_MEDIAN_ACCURACY : this.MAX_MEDIAN_ACCURACY = 20;
+    "MAX_STDDEVIATION_ACCURACY" in filters ? this.MAX_STDDEVIATION_ACCURACY = filters.MAX_STDDEVIATION_ACCURACY : this.MAX_STDDEVIATION_ACCURACY = 2.5;
+    "MAX_STDDEVIATION_LAT" in filters ? this.MAX_STDDEVIATION_LAT = filters.MAX_STDDEVIATION_LAT : this.MAX_STDDEVIATION_LAT = 0.0001;
+    "MAX_STDDEVIATION_LON" in filters ? this.MAX_STDDEVIATION_LON = filters.MAX_STDDEVIATION_LON : this.MAX_STDDEVIATION_LON = 0.0001;
+    "MAX_ARRAY_SIZE" in filters ? this.MAX_ARRAY_SIZE = filters.MAX_ARRAY_SIZE : this.MAX_ARRAY_SIZE = 25;
+
+    // SET ALL THE VARIABLES
+
+    var stddev_accuracy = 0, stddev_lat = 0, stddev_lon = 0, stddev_distance = 0;
+    var med_accuracy = 0, med_lat = 0, med_lon = 0, avg_accuracy = 0, avg_distance = 0;
+    var med_distance = 0, med_speed = 0, med_timediff = 0;
+
+    var accuracyArray = [];
+    var timeStampArray = [];
+    var speedArray = [];
+    var latArray = [];
+    var lonArray = [];
+    var latLonArray = [];
+    var distanceArray = []; // an array of distances between each successive lat and lon
+
+    var _currentValues = {};
+
+    if(!window.localStorage) {
+        console.error("WARNING: GeolocationHelper.js requires local storage.");
+    }
+
+    /**
+     * Reset all internal arrays to empty.
+     */
+    this.reset = function(){
+        timeStampArray = [];
+        speedArray = [];
+        accuracyArray = [];
+        distanceArray = [];
+        latArray = [];
+        lonArray = [];
+        latLonArray = [];
+    };
+
+    /**
+     * All values are required!
+     * @param accuracy
+     * @param lat
+     * @param lon
+     * @param timestamp
+     * @param callback
+     */
+    this.process = function(accuracy, lat, lon, timestamp, callback) {
+
+        accuracyArray.push(accuracy);
+
+        avg_accuracy = this.average(accuracyArray);
+        med_accuracy = this.median(accuracyArray);
+        stddev_accuracy = this.standardDeviation(accuracyArray);
+
+        latArray.push(lat);
+        lonArray.push(lon);
+        latLonArray.push({
+            latitude: lat,
+            longitude: lon
+        });
+
+        timeStampArray.push(timestamp);
+
+        if(latArray.length > 1){
+            var previous_lat = latArray[latArray.length - 1];
+            var previous_lon = lonArray[lonArray.length - 1];
+
+            var units = this.UNITS;
+            var distance = this.distance(previous_lat, previous_lon, lat, lon, units);
+            distanceArray.push(distance);
+            var timeDiff = timestamp - timeStampArray[timeStampArray.length - 1] / 1000;
+            var timeDiffInHours = Math.floor(( timeDiff  %= 86400) / 3600);
+            var speed = distance / timeDiffInHours;
+            speedArray.push(speed);
+        }
+
+        this.manageArraySize();
+
+        med_lat = this.median(latArray);
+        med_lon = this.median(lonArray);
+        med_speed = this.median(speedArray);
+        med_distance = this.median(distanceArray);
+        avg_distance = this.average(distanceArray);
+        med_timediff = this.medianTime(timeStampArray);
+        stddev_lat = this.standardDeviation(latArray);
+        stddev_lon = this.standardDeviation(lonArray);
+        stddev_distance = this.standardDeviation(distanceArray);
+
+        this.filter(accuracy, callback);
+    };
+
+    this.filter = function(accuracy, callback) {
+
+        var reject = false;
+
+        if (accuracy > this.MAX_ACCURACY) {
+            reject = true;
+        }
+        if (med_accuracy > this.MAX_MEDIAN_ACCURACY) {
+            reject = true;
+        }
+        if (stddev_accuracy > this.MAX_STDDEVIATION_ACCURACY) {
+            reject = true;
+        }
+        if (stddev_lat > this.MAX_STDDEVIATION_LAT) {
+            reject = true;
+        }
+        if (stddev_lon > this.MAX_STDDEVIATION_LON) {
+            reject = true;
+        }
+
+
+
+        _currentValues.reject  = reject;
+        _currentValues.count = latArray.length;
+        _currentValues.avg_accuracy = avg_accuracy;
+        _currentValues.avg_distance = avg_distance;
+        _currentValues.med_lat = med_lat;                  // Median latitude
+        _currentValues.med_lon = med_lon;                  // Median longitude
+        _currentValues.med_accuracy = med_accuracy;        // Median accuracy
+        _currentValues.med_speed = med_speed;              // Median speed
+        _currentValues.med_distance = med_distance;        // Median distance between values in the array
+        _currentValues.med_time_diff = med_timediff;       // Median difference in time between geolocation results
+        _currentValues.stddev_lat = stddev_lat;            // Standard deviation latitude
+        _currentValues.stddev_lon = stddev_lon;            // Standard deviation longitude
+        _currentValues.stddev_accuracy = stddev_accuracy;  // Standard deviation accuracy
+        _currentValues.stddev_distance = stddev_distance;  // Standard deviation distance between values in the array
+        _currentValues.center_point = this.getCenter(latLonArray);
+
+        localStorage.geolocationObject = JSON.stringify(_currentValues);
+
+        callback(_currentValues);
+    };
+
+    this.getLocationInfo = function(){
+
+        if(Object.keys(_currentValues).length === 0) {
+            if(localStorage.geolocationObject) {
+                _currentValues = localStorage.geolocationObject;
+            }
+        }
+
+        return _currentValues;
+    };
+
+    this.manageArraySize = function(){
+        // Manage our array size to keep from blowing up memory
+        if(accuracyArray.length > this.MAX_ARRAY_SIZE){
+            accuracyArray.shift();
+        }
+
+        if(distanceArray.length > this.MAX_ARRAY_SIZE) {
+            distanceArray.shift();
+        }
+
+        if(latLonArray.length > this.MAX_ARRAY_SIZE) {
+            latLonArray.shift();
+        }
+
+        if(latArray.length > this.MAX_ARRAY_SIZE){
+            latArray.shift();
+        }
+
+        if(lonArray.length > this.MAX_ARRAY_SIZE){
+            lonArray.shift();
+        }
+    };
+
+    this.distance = function(lat1, lon1, lat2, lon2, unit) {
+        var radlat1 = Math.PI * lat1/180;
+        var radlat2 = Math.PI * lat2/180;
+        var theta = lon1-lon2;
+        var radtheta = Math.PI * theta/180;
+        var dist = Math.sin(radlat1) * Math.sin(radlat2) + Math.cos(radlat1) * Math.cos(radlat2) * Math.cos(radtheta);
+        dist = Math.acos(dist);
+        dist = dist * 180/Math.PI;
+        dist = dist * 60 * 1.1515;
+        dist = dist * 1.609344 * 1000; // return meters
+        //if (unit=="K") { dist = dist * 1.609344 };
+        //if (unit=="N") { dist = dist * 0.8684 };
+        return dist;
+    };
+
+
+    /**
+     * standardDeviation() and average() functions courtesy of:
+     * http://derickbailey.com/2014/09/21/calculating-standard-deviation-with-array-map-and-array-reduce-in-javascript/
+     * @param values Array
+     * @returns {number}
+     */
+    this.standardDeviation = function(values) {
+        var avg = this.average(values);
+
+        var squareDiffs = values.map(function(value){
+            var diff = value - avg;
+            var sqrDiff = diff * diff;
+            return sqrDiff;
+        });
+
+        var avgSquareDiff = this.average(squareDiffs);
+
+        var stdDev = Math.sqrt(avgSquareDiff);
+        return stdDev;
+    };
+
+    this.average = function(data) {
+        var sum = data.reduce(function(sum, value){
+            return sum + value;
+        }, 0);
+
+        var avg = sum / data.length;
+        return isNaN(avg) ? 0 : avg;
+    };
+
+    /**
+     * All credits to: https://gist.github.com/caseyjustus/1166258
+     * @param array
+     * @returns {*}
+     */
+    this.median = function(array) {
+
+        if(array.length == 1) return array[0];
+
+        array.sort( function(a,b) {return a - b;} );
+
+        var half = Math.floor(array.length/2);
+
+        if(array.length % 2) {
+            return array[half];
+        }
+        else {
+            return (array[half-1] + array[half]) / 2.0;
+        }
+    };
+
+    this.medianTime = function(array) {
+
+        if(array.length == 1) return 0;
+
+        var diff = array.map(function(currentVal,index){
+            if(index > 0) {
+                return currentVal - array[index - 1];
+            }
+        });
+
+        return this. median(diff);
+
+    };
+
+    this.getLargestDistance = function(array){
+        return array.sort()[array.length];
+    };
+
+    /**
+     * Returns an array of Object {latitude: y, longitude: x}
+     * @returns {Array}
+     */
+    this.getLatLonArray = function(){
+        return latLonArray;
+    };
+
+    this.getMidPoint = function(){
+        return _currentValues.center_point;
+    };
+
+    /**
+     * Reference: http://stackoverflow.com/questions/6671183/calculate-the-center-point-of-multiple-latitude-longitude-coordinate-pairs
+     * Reference: http://stackoverflow.com/questions/1185408/converting-from-longitude-latitude-to-cartesian-coordinates
+     * Reference: http://en.wikipedia.org/wiki/Spherical_coordinate_system
+     * @param coordsArray
+     * @returns {*}
+     */
+    this.getCenter = function(coordsArray) {
+
+        var x = 0, y = 0, z = 0;
+        var radius = 6367; // earth's radius in km
+
+        coordsArray.forEach(function(value){
+
+            // Convert latitude and longitude to radians
+            var latRad = Math.PI * value.latitude / 180;
+            var lonRad = Math.PI * value.longitude / 180;
+
+            // Convert to cartesian coords
+            x += radius * Math.cos(latRad) * Math.cos(lonRad);
+            y += radius * Math.cos(latRad) * Math.sin(lonRad);
+            z += radius * Math.sin(latRad);
+        });
+
+        // Get our averages
+        var xAvg = x / latLonArray.length;
+        var yAvg = y / latLonArray.length;
+        var zAvg = z / latLonArray.length;
+
+        // Convert cartesian back to spherical
+        var sphericalLatRads = Math.asin(zAvg / radius);
+        var sphericalLonRads = Math.atan2(yAvg , xAvg);
+
+        // Convert radians back to degrees
+        return {
+            latitude: sphericalLatRads * (180 / Math.PI),
+            longitude: sphericalLonRads * (180 / Math.PI)}
+    }
+
+};
