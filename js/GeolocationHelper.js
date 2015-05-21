@@ -21,6 +21,10 @@ var GeolocationHelper = function(/* Object */ filters) {
     this.MAX_STDDEVIATION_LON;
     this.MAX_ARRAY_SIZE;
 
+    if(!filters){
+        filters = {};
+    }
+
     // APPLY FILTERS IF NECESSARY. Otherwise use default values.
 
     "UNITS" in filters ? this.UNITS = filters.UNITS : this.UNITS = "M"; // M = miles, K = km, N = nautical miles
@@ -34,7 +38,7 @@ var GeolocationHelper = function(/* Object */ filters) {
     // SET ALL THE VARIABLES
 
     var stddev_accuracy = 0, stddev_lat = 0, stddev_lon = 0, stddev_distance = 0;
-    var med_accuracy = 0, med_lat = 0, med_lon = 0;
+    var med_accuracy = 0, med_lat = 0, med_lon = 0, avg_accuracy = 0, avg_distance = 0;
     var med_distance = 0, med_speed = 0, med_timediff = 0;
 
     var accuracyArray = [];
@@ -74,16 +78,11 @@ var GeolocationHelper = function(/* Object */ filters) {
      */
     this.process = function(accuracy, lat, lon, timestamp, callback) {
 
-        this.manageArraySize();
+        accuracyArray.push(accuracy);
 
-        // REJECT any lat lon values if accuracy is greater than our maximum acceptable
-        if(accuracy < this.MAX_ACCURACY){
-
-            accuracyArray.push(accuracy);
-
-            med_accuracy = this.median(accuracyArray);
-            stddev_accuracy = this.standardDeviation(accuracyArray);
-        }
+        avg_accuracy = this.average(accuracyArray);
+        med_accuracy = this.median(accuracyArray);
+        stddev_accuracy = this.standardDeviation(accuracyArray);
 
         latArray.push(lat);
         lonArray.push(lon);
@@ -107,10 +106,13 @@ var GeolocationHelper = function(/* Object */ filters) {
             speedArray.push(speed);
         }
 
+        this.manageArraySize();
+
         med_lat = this.median(latArray);
         med_lon = this.median(lonArray);
         med_speed = this.median(speedArray);
         med_distance = this.median(distanceArray);
+        avg_distance = this.average(distanceArray);
         med_timediff = this.medianTime(timeStampArray);
         stddev_lat = this.standardDeviation(latArray);
         stddev_lon = this.standardDeviation(lonArray);
@@ -139,8 +141,12 @@ var GeolocationHelper = function(/* Object */ filters) {
             reject = true;
         }
 
+
+
         _currentValues.reject  = reject;
         _currentValues.count = latArray.length;
+        _currentValues.avg_accuracy = avg_accuracy;
+        _currentValues.avg_distance = avg_distance;
         _currentValues.med_lat = med_lat;                  // Median latitude
         _currentValues.med_lon = med_lon;                  // Median longitude
         _currentValues.med_accuracy = med_accuracy;        // Median accuracy
@@ -201,8 +207,9 @@ var GeolocationHelper = function(/* Object */ filters) {
         dist = Math.acos(dist);
         dist = dist * 180/Math.PI;
         dist = dist * 60 * 1.1515;
-        if (unit=="K") { dist = dist * 1.609344 };
-        if (unit=="N") { dist = dist * 0.8684 };
+        dist = dist * 1.609344 * 1000; // return meters
+        //if (unit=="K") { dist = dist * 1.609344 };
+        //if (unit=="N") { dist = dist * 0.8684 };
         return dist;
     };
 
@@ -234,7 +241,7 @@ var GeolocationHelper = function(/* Object */ filters) {
         }, 0);
 
         var avg = sum / data.length;
-        return avg;
+        return isNaN(avg) ? 0 : avg;
     };
 
     /**
@@ -272,6 +279,10 @@ var GeolocationHelper = function(/* Object */ filters) {
 
     };
 
+    this.getLargestDistance = function(array){
+        return array.sort()[array.length];
+    };
+
     /**
      * Returns an array of Object {latitude: y, longitude: x}
      * @returns {Array}
@@ -285,44 +296,42 @@ var GeolocationHelper = function(/* Object */ filters) {
     };
 
     /**
-     * All credits: https://github.com/manuelbieh/Geolib/blob/master/src/geolib.js
-     * Reference: http://www.geomidpoint.com/calculation.html
-     * @param coords
+     * Reference: http://stackoverflow.com/questions/6671183/calculate-the-center-point-of-multiple-latitude-longitude-coordinate-pairs
+     * Reference: http://stackoverflow.com/questions/1185408/converting-from-longitude-latitude-to-cartesian-coordinates
+     * Reference: http://en.wikipedia.org/wiki/Spherical_coordinate_system
+     * @param coordsArray
      * @returns {*}
      */
-    this.getCenter = function(coords) {
+    this.getCenter = function(coordsArray) {
 
-        if (!coords.length) {
-            return false;
-        }
+        var x = 0, y = 0, z = 0;
+        var radius = 6367; // earth's radius in km
 
-        var X = 0.0;
-        var Y = 0.0;
-        var Z = 0.0;
-        var lat, lon, hyp;
+        coordsArray.forEach(function(value){
 
-        coords.forEach(function(coord) {
-            lat = coord.latitude * Math.PI / 180;
-            lon = coord.longitude * Math.PI / 180;
+            // Convert latitude and longitude to radians
+            var latRad = Math.PI * value.latitude / 180;
+            var lonRad = Math.PI * value.longitude / 180;
 
-            X += Math.cos(lat) * Math.cos(lon);
-            Y += Math.cos(lat) * Math.sin(lon);
-            Z += Math.sin(lat);
+            // Convert to cartesian coords
+            x += radius * Math.cos(latRad) * Math.cos(lonRad);
+            y += radius * Math.cos(latRad) * Math.sin(lonRad);
+            z += radius * Math.sin(latRad);
         });
 
-        var nb_coords = coords.length;
-        X = X / nb_coords;
-        Y = Y / nb_coords;
-        Z = Z / nb_coords;
+        // Get our averages
+        var xAvg = x / latLonArray.length;
+        var yAvg = y / latLonArray.length;
+        var zAvg = z / latLonArray.length;
 
-        lon = Math.atan2(Y, X);
-        hyp = Math.sqrt(X * X + Y * Y);
-        lat = Math.atan2(Z, hyp);
+        // Convert cartesian back to spherical
+        var sphericalLatRads = Math.asin(zAvg / radius);
+        var sphericalLonRads = Math.atan2(yAvg , xAvg);
 
+        // Convert radians back to degrees
         return {
-            latitude: (lat * 180 / Math.PI).toFixed(6),
-            longitude: (lon * 180 / Math.PI).toFixed(6)
-        };
+            latitude: sphericalLatRads * (180 / Math.PI),
+            longitude: sphericalLonRads * (180 / Math.PI)}
     }
 
 };

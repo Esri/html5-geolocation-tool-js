@@ -23,7 +23,8 @@
             font-family: Arial, Helvetica, sans-serif;
         }
         #mapDiv{
-            height: 300px;
+            min-height: 300px;
+            max-height: 300px;
             width: 100%;
             padding-left: 20px;
             padding-right: 20px;
@@ -45,7 +46,7 @@
                     <button type="button" class="btn btn-warning" onclick="reset()"><span class="glyphicon glyphicon-refresh" aria-hidden="true"></span></button>
                     <button class="btn btn-primary" type="button">
                         <span class="glyphicon glyphicon-time" aria-hidden="true">
-                            <span id="elapsed-time" class="badge">00:00:0000</span>
+                            <span id="elapsed-time" class="badge">00:00:00</span>
                         </span>
                     </button>
                 </div>
@@ -66,23 +67,25 @@
                         buffer
                     </div>
                 </div>
-                <form class="form-inline">
-                    <div class="checkbox">
-                        <label>
-                            <input id="average-center" type="checkbox" checked onchange="showAverageCenter()"> Use averaged lat/lon
-                        </label>
-                    </div>
-                    <div class="checkbox">
-                        <label>
-                            <input id="show-circle" type="checkbox" checked onchange="showCircle()">  Show circle
-                        </label>
-                    </div>
-                    <div class="checkbox">
-                        <label>
-                            <input id="show-all-pts" type="checkbox" onchange="showAllPoints()">  Show all points
-                        </label>
-                    </div>
-                </form>
+                <table class="table">
+                    <tr class="info">
+                        <td>
+                            <label>
+                                <input id="average-center" type="checkbox" checked onchange="showAverageCenter()"> Use averaged center
+                            </label>
+                        </td>
+                        <td>
+                            <label>
+                                <input id="show-circle" type="checkbox" checked onchange="showAccuracyCircle()">  Show accuracy circle
+                            </label>
+                        </td>
+                        <td>
+                            <label>
+                                <input id="show-all-pts" type="checkbox" onchange="showAllPoints()">  Show all points
+                            </label>
+                        </td>
+                    </tr>
+                </table>
             </div>
         </div>
     </div>
@@ -92,12 +95,12 @@
         <div class="well">
             <div class="row">
                 <ul class="list-group col-md-6">
-                    <div id="avg-lat-lon" class="list-group-item list-group-item-info">Average (lat, lon): 0, 0</div>
-                    <div id="avg-accuracy" class="list-group-item list-group-item-info">Average (accuracy): 0</div>
+                    <div id="avg-lat-lon" class="list-group-item list-group-item-info">Avg. Center (lat, lon): 0, 0</div>
+                    <div id="avg-accuracy" class="list-group-item list-group-item-info">Avg. accuracy (m): 0</div>
                 </ul>
                 <ul class="list-group col-md-6">
-                    <div id="strd-lat-lon"class="list-group-item list-group-item-success">Standard Deviation (lat, lon): 0, 0</div>
-                    <div id="strd-accuracy" class="list-group-item list-group-item-success">Standard Deviation (accuracy): 0</div>
+                    <div id="avg-dist-lat-lon" class="list-group-item list-group-item-success">Avg. distance between updates (m): 0</div>
+                    <div id="avg-time" class="list-group-item list-group-item-success">Avg. time between updates: 0</div>
                 </ul>
             </div>
         </div>
@@ -124,7 +127,7 @@
     <div class="panel panel-default">
         <div class="panel-heading">Set number of points to process:</div>
         <div class="well">
-            <div class="btn-toolbar" role="toolbar">
+            <div id="btn-chooser-bar" class="btn-toolbar" role="toolbar">
                 <button id="btn-choose-15" type="button" class="btn btn-info">15</button>
                 <button id="btn-choose-25" type="button" disabled class="btn btn-default">25</button>
                 <button id="btn-choose-35" type="button" class="btn btn-info">35</button>
@@ -143,9 +146,9 @@
         };
     </script>
 
-
+    <!--<script src="js/atoll.js"></script>-->
     <script src="js/GeolocationHelper.js"></script>
-    <script src="http://js.arcgis.com/3.12/"></script>
+    <script src="http://js.arcgis.com/3.13/"></script>
     <script>
 
         //
@@ -158,7 +161,7 @@
         var _watchID = null;
         var _zoomStop = 17;
         var _dateStart = new Date();
-        var __currentTime = _dateStart.getTime();
+        var __currentTime = null;
 
         var startDate = new Date();
         var accuracyArray = [];
@@ -184,7 +187,7 @@
         var useActualLatLon = false;
 
         // Divs
-        var strdAccuracyDiv = document.getElementById("strd-accuracy");
+        var avgTimeDiv = document.getElementById("avg-time");
         var avgAccuracyDiv = document.getElementById("avg-accuracy");
         var accuracyDiv = document.getElementById("accuracy");
         var latLonDiv = document.getElementById("lat-lon");
@@ -192,10 +195,22 @@
         var speedDiv = document.getElementById("speed");
         var headingDiv = document.getElementById("heading");
         var timeDiffDiv = document.getElementById("time-diff");
-        var strdDevLatLonArrayDiv = document.getElementById("strd-lat-lon");
+        var avgDistanceLatLonArrayDiv = document.getElementById("avg-dist-lat-lon");
         var avgLatLonDiv = document.getElementById("avg-lat-lon");
         var elapsedTimeDiv = document.getElementById("elapsed-time");
+
         var progressBar = document.getElementById("progress-bar-main");
+
+        // Button bar
+        var choose15Btn = document.getElementById("btn-choose-15");
+        choose15Btn.addEventListener("click",handleChooserBtn);
+        var choose25Btn = document.getElementById("btn-choose-25");
+        choose25Btn.addEventListener("click",handleChooserBtn);
+        var choose35Btn = document.getElementById("btn-choose-35");
+        choose35Btn.addEventListener("click",handleChooserBtn);
+        var choose45Btn = document.getElementById("btn-choose-45");
+        choose45Btn.addEventListener("click",handleChooserBtn);
+        var chooserBtnBar = document.getElementById("btn-chooser-bar");
 
         var startGeoBtn = document.getElementById("start-geo-btn");
 
@@ -203,12 +218,7 @@
         var showAllPtsCheckBox = document.getElementById("show-all-pts");
         var showAvgCenterCheckBox = document.getElementById("average-center");
 
-        // Use mostly default settings
-        var filters = {
-            units: "K"
-        };
-
-        var geolocationHelper = new GeolocationHelper(filters);
+        var geolocationHelper = new GeolocationHelper(null /* no filters */);
 
         // We want to start the geolocation as early as possible in the application.
         startGeo();
@@ -223,9 +233,9 @@
             "dojo/_base/Color",
             "esri/geometry/Circle", "esri/symbols/SimpleFillSymbol","application/bootstrapmap",
             "dojo/domReady!"],
-                function(Map,PictureMarkerSymbol,SimpleMarkerSymbol,SimpleLineSymbol,Graphic,Point,Color,Circle,SimpleFillSymbol,Bootstrapmap) {
+                function(Map,PictureMarkerSymbol,SimpleMarkerSymbol,SimpleLineSymbol,Graphic,Point,Color,Circle,SimpleFillSymbol,BootstrapMap) {
 
-                    map = new Map("mapDiv", {
+                    map = BootstrapMap.create("mapDiv",{
                         basemap: "topo",
                         center: [-122.45, 37.75], // longitude, latitude
                         zoom: 11
@@ -301,13 +311,15 @@
             reset();
             startMasterTimer();
 
+            __currentTime = _dateStart.getTime();
+
             _watchID = navigator.geolocation.watchPosition(
                 geoResults,
                 geoErrors,
                 {
                     timeout: 60000,
                     enableHighAccuracy: true,
-                    maximumAge: 300000 //5 minutes
+                    maximumAge: 0
                 }
             );
         }
@@ -336,20 +348,12 @@
 
                 startGeoBtn.className = "btn btn-success";
 
-                if(useActualLatLon) {
-                    drawLocationMarker(lat,lon,accuracy);
-                }
-                else {
-                    drawLocationMarker(result.center_point.latitude,result.center_point.longitude,result.med_accuracy);
-                }
+                avgDistanceLatLonArrayDiv.innerHTML = "Avg. distance between updates (m): " + result.avg_distance.toFixed(5).toString();
+                avgTimeDiv.innerHTML = "Avg. time between updates: " + elapsedTime(new Date(result.med_time_diff),true);
 
-                strdAccuracyDiv.innerHTML = "Standard Deviation accuracy: " + result.stddev_accuracy.toFixed(5).toString();
-                avgAccuracyDiv.innerHTML = "Median accuracy: " + result.med_accuracy.toFixed(5).toString();
+                avgAccuracyDiv.innerHTML = "Avg. accuracy (m): " + result.avg_accuracy.toFixed(1).toString()
 
-                strdDevLatLonArrayDiv.innerHTML = "Standard Deviation (lat, lon): " + result.stddev_lat.toFixed(5).toString() +
-                ", " + result.stddev_lon.toFixed(5).toString();
-
-                avgLatLonDiv.innerHTML = "Average Center (lat, lon): " + result.center_point.latitude +
+                avgLatLonDiv.innerHTML = "Avg. Center (lat, lon): " + result.center_point.latitude +
                 ", " + result.center_point.longitude;
 
                 progressBar.style.width = (result.count / geolocationHelper.MAX_ARRAY_SIZE * 100).toString() + "%";
@@ -357,6 +361,13 @@
 
                 var date = new Date();
                 __currentTime = date.getTime();
+
+                if(useActualLatLon) {
+                    drawLocationMarker(lat,lon,accuracy);
+                }
+                else {
+                    drawLocationMarker(result.center_point.latitude,result.center_point.longitude,result.med_accuracy);
+                }
 
             });
         }
@@ -432,34 +443,6 @@
             }
         }
 
-        function startMasterTimer(){
-
-            masterTimer = new Worker("js/background-timer.js");
-            masterTimer.onmessage = function(event){
-                elapsedTimeDiv.innerHTML = elapsedTime(new Date(Math.abs(event.data - startDate.getTime())),true);
-
-                var endTime = new Date();
-                timeDiffDiv.innerHTML = "Time since last update (ms): " + elapsedTime(new Date(Math.abs(endTime.getTime() - __currentTime)),true);
-            }
-        }
-
-        function stopMasterTimer(){
-            masterTimer.terminate();
-        }
-
-        function restartAll(){
-            masterTimer.terminate();
-            startMasterTimer();
-        }
-
-        function stopTimers(){
-            if(masterTimer) {
-                masterTimer.terminate();
-            }
-            masterTimer = null;
-
-        }
-
         /**
          * Calculate HH:MM:SS:MS from a given Date in millis
          * @param date
@@ -481,6 +464,10 @@
             ss = ss < 10 ? "0" + ss : ss;
             msec = msec < 10 ? "0" + msec : msec;
 
+            if(isNaN(hh) || isNaN(mm) || isNaN(ss) || isNaN(msec)) {
+                return "00:00:00";
+            }
+
             if(hmsOnly){
                 return hh + ":" + mm + ":" + ss;
             }
@@ -494,6 +481,19 @@
             latArray = [];
             lonArray = [];
             if(map) map.graphics.clear();
+            progressBar.style.width = "0%";
+
+            avgTimeDiv.innerHTML = "Avg. time between updates: 0";
+            avgAccuracyDiv.innerHTML = "Avg. accuracy (m): 0";
+            accuracyDiv.innerHTML = "Accuracy (m): 0";
+            latLonDiv.innerHTML = "Lat: 0.0, Lon: 0.0";
+            altitudeDiv.innerHTML = "Altitude: 0";
+            speedDiv.innerHTML = "Speed: 0";
+            headingDiv.innerHTML = "Heading: 0";
+            timeDiffDiv.innerHTML = "Avg. time between updates: 0";
+            avgDistanceLatLonArrayDiv.innerHTML = "Avg. distance between updates (m): 0";
+            avgLatLonDiv.innerHTML = "Avg. center (lat, lon): 0.0, 0.0";
+            elapsedTimeDiv.innerHTML = "00:00:00";
         }
 
         function showAverageCenter() {
@@ -530,7 +530,7 @@
             }
         }
 
-        function showCircle(evt) {
+        function showAccuracyCircle(evt) {
             if(showCircleCheckBox.checked){
                 drawCircle = true;
 
@@ -542,7 +542,7 @@
             else {
                 drawCircle = false;
 
-                map.graphics.graphics.forEach(function(graphic){
+                map.graphics.graphics.forEach(function(graphic) {
                    if(graphic.hasOwnProperty("geometry") && graphic.geometry._tempType === "circle") {
                        map.graphics.remove(graphic);
                    }
@@ -550,7 +550,7 @@
             }
         }
 
-        function geoErrors(error){
+        function geoErrors(error) {
             switch(error.code){
                 // "PERMISSION_DENIED"
                 case 1:
@@ -570,11 +570,57 @@
             }
         }
 
-        function stopAll(){
+        function stopAll() {
             stopTimers();
             navigator.geolocation.clearWatch(_watchID);
             _watchID = null;
             startGeoBtn.className = "btn btn-default";
+        }
+
+        function restartAll() {
+            stopAll();
+            startMasterTimer();
+        }
+
+        function stopTimers(){
+
+            // Try multiple ways to kill the web worker
+            if(masterTimer) {
+                masterTimer.postMessage("stop");
+                masterTimer.terminate();
+            }
+            masterTimer = undefined; // Free up memory if not in use
+
+        }
+
+        function startMasterTimer() {
+
+            masterTimer = new Worker("js/background-timer.js");
+            masterTimer.onmessage = function(event){
+                elapsedTimeDiv.innerHTML = elapsedTime(new Date(Math.abs(event.data - startDate.getTime())),true);
+
+                var endTime = new Date();
+                timeDiffDiv.innerHTML = "Time since last update (ms): " + elapsedTime(new Date(Math.abs(endTime.getTime() - __currentTime)),true);
+            }
+        }
+
+        function handleChooserBtn() {
+
+            var btnArray = [].slice.call(chooserBtnBar.children);
+
+            this.className = "btn btn-default";
+            this.disabled = true;
+
+            geolocationHelper.MAX_ARRAY_SIZE = parseInt(this.id.substr(this.id.length - 2));
+
+            btnArray.forEach(function(child) {
+                if(child.id !== this.id){
+                    child.className = "btn btn-info";
+                    child.disabled = false;
+                }
+            }.bind(this));
+
+            startGeo();
         }
 
     </script>
