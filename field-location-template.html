@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html>
+<!--
+// Author: @agup
+//
+// EXPERIMENTAL!!
+// This is a demonstration app for capturing point locations in the field.
+//
+
+-->
+<head lang="en">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+    <title>Geodata Test</title>
+
+    <link rel="stylesheet" href="http://js.arcgis.com/3.13/esri/css/esri.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" >
+    <link rel="stylesheet" href="//esri.github.io/bootstrap-map-js/src/css/bootstrapmap.css">
+    <link rel="stylesheet" href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css" >
+
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        #mapDiv{
+            min-height: 300px;
+            max-height: 300px;
+            width: 100%;
+            padding-left: 20px;
+            padding-right: 20px;
+        }
+        /* Override bootstrap progress bar color */
+        .progress-bar-warning {
+            background-color: yellow;
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <div class="panel panel-default">
+        <div class="panel-body">
+            <div class="row">
+                <div class="col-md-12">
+                    <button id="start-geo-btn" type="button" class="btn btn-default" onclick="startGeo()"><span class="glyphicon glyphicon-screenshot" aria-hidden="true"></span></button>
+                    <button type="button" class="btn btn-danger" onclick="stopAll()"><span class="glyphicon glyphicon-off" aria-hidden="true"></span></button>
+                    <button type="button" class="btn btn-warning" onclick="reset()"><span class="glyphicon glyphicon-refresh" aria-hidden="true"></span></button>
+                    <button class="btn btn-primary" type="button">
+                        <span class="glyphicon glyphicon-time" aria-hidden="true">
+                            <span id="elapsed-time" class="badge">00:00:00</span>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div id="mapDiv"></div>
+    </div>
+
+    <div class="panel panel-defaut">
+        <div class="panel-body">
+            <div class="well">
+                <div class="progress">
+                    <!-- Make sure you set the max value to the same as the GeolocationHelper.MAX_ARRAY_SIZE -->
+                    <div id="progress-bar-main" class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
+                        buffer
+                    </div>
+                </div>
+                <table class="table">
+                    <tr class="info">
+                        <td>
+                            <label>
+                                <input id="average-center" type="checkbox" checked onchange="showAverageCenter()"> Use averaged center
+                            </label>
+                        </td>
+                        <td>
+                            <label>
+                                <input id="show-circle" type="checkbox" checked onchange="showAccuracyCircle()">  Show accuracy circle
+                            </label>
+                        </td>
+                        <td>
+                            <label>
+                                <input id="show-all-pts" type="checkbox" onchange="showAllPoints()">  Show all points
+                            </label>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">Processed Location Data</div>
+        <div class="well">
+            <div class="row">
+                <ul class="list-group col-md-6">
+                    <div id="avg-lat-lon" class="list-group-item list-group-item-info">Avg. Center (lat, lon): 0, 0</div>
+                    <div id="avg-accuracy" class="list-group-item list-group-item-info">Avg. accuracy (m): 0</div>
+                </ul>
+                <ul class="list-group col-md-6">
+                    <div id="avg-dist-lat-lon" class="list-group-item list-group-item-success">Avg. distance between updates (m): 0</div>
+                    <div id="avg-time" class="list-group-item list-group-item-success">Avg. time between updates: 0</div>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">Raw Location Data</div>
+        <div class="well">
+            <div class="row">
+                <ul class="list-group col-md-6">
+                    <li id="lat-lon"  class="list-group-item list-group-item-info">Lat: 0.0, Lon: 0.0</li>
+                    <li id="accuracy" class="list-group-item list-group-item-info">Accuracy: 0.0</li>
+                    <li id="time-diff" class="list-group-item list-group-item-info">Time since last update: 0</li>
+                </ul>
+                <ul class="list-group col-md-6">
+                    <li id="heading" class="list-group-item list-group-item-success">Heading: 0</li>
+                    <li id="altitude" class="list-group-item list-group-item-success">Altitude: 0</li>
+                    <li id="speed" class="list-group-item list-group-item-success">Speed: 0</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">Set number of points to process:</div>
+        <div class="well">
+            <div id="btn-chooser-bar" class="btn-toolbar" role="toolbar">
+                <button id="btn-choose-15" type="button" class="btn btn-info">15</button>
+                <button id="btn-choose-25" type="button" disabled class="btn btn-default">25</button>
+                <button id="btn-choose-35" type="button" class="btn btn-info">35</button>
+                <button id="btn-choose-45" type="button" class="btn btn-info">45</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        var package_path = "//esri.github.com/bootstrap-map-js/src/js";
+        var dojoConfig = {
+            packages: [{
+                name: "application",
+                location: package_path
+            }]
+        };
+    </script>
+
+    <!--<script src="js/atoll.js"></script>-->
+    <script src="js/GeolocationHelper.js"></script>
+    <script src="http://js.arcgis.com/3.13/"></script>
+    <script>
+
+        //
+        // EXPERIMENTAL!!
+        // This app demonstrates a very simple
+        // algorithm for smoothing out geolocation results to
+        // capture a single location.
+        //
+
+        var _watchID = null;
+        var _zoomStop = 17;
+        var _dateStart = new Date();
+        var __currentTime = null;
+
+        var startDate = new Date();
+        var accuracyArray = [];
+        var latArray = [];
+        var lonArray = [];
+        var maxArraySize = 100;
+        var lastUpdateDiffMillis = 0;
+        var lastUpdateDateTime = 0;
+        var positionObject = {}, missMapDraw = false;
+        var differenceTimer = null;
+        var masterTimer = null;
+        var map = null, _greenMarkerSymbol = null, _redMarkerSymbol = null, _yellowMarkerSymbol = null;
+        var _greenCircleSymbol = null, _redCircleSymbol = null, _yellowCircleSymbol = null, _smallCircleSymbol = null, _lastCircle = null;
+        var finalMarkerSymbol = null;
+        var finalCircleSymbol = null;
+
+        var stddev_accuracy = 0, stddev_lat = 0, stddev_lon = 0;
+        var avg_accuracy = 0, avg_lat = 0, avg_lon = 0;
+
+        // User controls
+        var drawCircle = true;
+        var drawAllPoints = false;
+        var useActualLatLon = false;
+
+        // Divs
+        var avgTimeDiv = document.getElementById("avg-time");
+        var avgAccuracyDiv = document.getElementById("avg-accuracy");
+        var accuracyDiv = document.getElementById("accuracy");
+        var latLonDiv = document.getElementById("lat-lon");
+        var altitudeDiv = document.getElementById("altitude");
+        var speedDiv = document.getElementById("speed");
+        var headingDiv = document.getElementById("heading");
+        var timeDiffDiv = document.getElementById("time-diff");
+        var avgDistanceLatLonArrayDiv = document.getElementById("avg-dist-lat-lon");
+        var avgLatLonDiv = document.getElementById("avg-lat-lon");
+        var elapsedTimeDiv = document.getElementById("elapsed-time");
+
+        var progressBar = document.getElementById("progress-bar-main");
+
+        // Button bar
+        var choose15Btn = document.getElementById("btn-choose-15");
+        choose15Btn.addEventListener("click",handleChooserBtn);
+        var choose25Btn = document.getElementById("btn-choose-25");
+        choose25Btn.addEventListener("click",handleChooserBtn);
+        var choose35Btn = document.getElementById("btn-choose-35");
+        choose35Btn.addEventListener("click",handleChooserBtn);
+        var choose45Btn = document.getElementById("btn-choose-45");
+        choose45Btn.addEventListener("click",handleChooserBtn);
+        var chooserBtnBar = document.getElementById("btn-chooser-bar");
+
+        var startGeoBtn = document.getElementById("start-geo-btn");
+
+        var showCircleCheckBox = document.getElementById("show-circle");
+        var showAllPtsCheckBox = document.getElementById("show-all-pts");
+        var showAvgCenterCheckBox = document.getElementById("average-center");
+
+        var geolocationHelper = new GeolocationHelper(null /* no filters */);
+
+        // We want to start the geolocation as early as possible in the application.
+        startGeo();
+
+        require([
+            "esri/map",
+            "esri/symbols/PictureMarkerSymbol",
+            "esri/symbols/SimpleMarkerSymbol",
+            "esri/symbols/SimpleLineSymbol",
+            "esri/graphic",
+            "esri/geometry/Point",
+            "dojo/_base/Color",
+            "esri/geometry/Circle", "esri/symbols/SimpleFillSymbol","application/bootstrapmap",
+            "dojo/domReady!"],
+                function(Map,PictureMarkerSymbol,SimpleMarkerSymbol,SimpleLineSymbol,Graphic,Point,Color,Circle,SimpleFillSymbol,BootstrapMap) {
+
+                    map = BootstrapMap.create("mapDiv",{
+                        basemap: "topo",
+                        center: [-122.45, 37.75], // longitude, latitude
+                        zoom: 11
+                    });
+
+                    // If we have geolocation information ready the instant the map loads
+                    // let's go ahead and drop a location marker on the map.
+                    map.on("load",function(){
+                        if(missMapDraw){
+                            drawLocationMarker(positionObject.lat,positionObject.lon,positionObject.accuracy);
+                            missMapDraw = false;
+                        }
+                    });
+
+                    map.on("zoom-end",function(evt){
+                        _zoomStop = evt.level;
+                    });
+
+                    (function() {
+                        // Create the marker symbol
+                        _greenMarkerSymbol = new PictureMarkerSymbol({
+                            "angle":0,
+                            "xoffset":0,
+                            "yoffset":13,
+                            "type":"esriPMS",
+                            "url":"images/green-pin.png",
+                            "width":35,
+                            "height":35
+                        });
+
+                        _redMarkerSymbol = new PictureMarkerSymbol({
+                            "angle":0,
+                            "xoffset":0,
+                            "yoffset":13,
+                            "type":"esriPMS",
+                            "url":"images/red-pin.png",
+                            "width":35,
+                            "height":35
+                        });
+
+                        _yellowMarkerSymbol = new PictureMarkerSymbol({
+                            "angle":0,
+                            "xoffset":0,
+                            "yoffset":13,
+                            "type":"esriPMS",
+                            "url":"images/yellow-pin.png",
+                            "width":35,
+                            "height":35
+                        });
+
+                        _greenCircleSymbol = new SimpleFillSymbol().setColor(null).outline.setColor("green");
+                        _redCircleSymbol = new SimpleFillSymbol(SimpleFillSymbol.STYLE_SOLID,new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID,
+                                new Color([220,20,60]), 1),new Color([220,20,60,0.25]));
+                        _yellowCircleSymbol = new SimpleFillSymbol(SimpleFillSymbol.STYLE_SOLID,new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID,
+                                new Color([255,255,0]), 1),new Color([255,255,0,0.25]));
+
+                        _smallCircleSymbol = new SimpleMarkerSymbol(
+                                SimpleMarkerSymbol.STYLE_CIRCLE,
+                                12,
+                                new SimpleLineSymbol(
+                                        SimpleLineSymbol.STYLE_NULL,
+                                        new Color([247, 34, 101, 0.9]),
+                                        1
+                                ),
+                                new Color([207, 34, 171, 0.5])
+                        );
+
+                    }());
+        });
+
+        function startGeo() {
+
+            reset();
+            startMasterTimer();
+
+            __currentTime = _dateStart.getTime();
+
+            _watchID = navigator.geolocation.watchPosition(
+                geoResults,
+                geoErrors,
+                {
+                    timeout: 60000,
+                    enableHighAccuracy: true,
+                    maximumAge: 0
+                }
+            );
+        }
+
+        function geoResults(position){
+
+            positionObject = position;
+
+            var lat = position.coords.latitude;         //Get latitude
+            var lon = position.coords.longitude;        //Get longitude
+            var timeStamp = position.timestamp;         //Get timestamp
+            var accuracy = position.coords.accuracy; 	//Get accuracy in meters
+            var heading = position.coords.heading;
+            var speed = position.coords.speed;
+            var altitude = position.coords.altitude;
+
+            if(lat != null && lon != null) latLonDiv.innerHTML = "Lat: " + lat.toString() + ", " + "Lon: " + lon.toString();
+//            if(timeStamp != null) timestampDiv.innerHTML = "Timestamp: " + new Date(timeStamp).toUTCString();
+            if(accuracy != null) accuracyDiv.innerHTML = "Accuracy (m): " + accuracy.toString();
+            if(heading != null) headingDiv.innerHTML = "Heading: " + heading.toString();
+            if(speed != null) speedDiv.innerHTML = "Speed (m/s): " + speed.toString();
+            if(altitude != null) altitudeDiv.innerHTML = "Altitude: " + altitude.toString();
+
+            geolocationHelper.process(accuracy,lat,lon,timeStamp,function(result){
+                console.log("RESULT " + JSON.stringify(result));
+
+                startGeoBtn.className = "btn btn-success";
+
+                avgDistanceLatLonArrayDiv.innerHTML = "Avg. distance between updates (m): " + result.avg_distance.toFixed(5).toString();
+                avgTimeDiv.innerHTML = "Avg. time between updates: " + elapsedTime(new Date(result.med_time_diff),true);
+
+                avgAccuracyDiv.innerHTML = "Avg. accuracy (m): " + result.avg_accuracy.toFixed(1).toString()
+
+                avgLatLonDiv.innerHTML = "Avg. Center (lat, lon): " + result.center_point.latitude +
+                ", " + result.center_point.longitude;
+
+                progressBar.style.width = (result.count / geolocationHelper.MAX_ARRAY_SIZE * 100).toString() + "%";
+                progressBar.innerHTML = result.count + " / " + geolocationHelper.MAX_ARRAY_SIZE;
+
+                var date = new Date();
+                __currentTime = date.getTime();
+
+                if(useActualLatLon) {
+                    drawLocationMarker(lat,lon,accuracy);
+                }
+                else {
+                    drawLocationMarker(result.center_point.latitude,result.center_point.longitude,result.med_accuracy);
+                }
+
+            });
+        }
+
+        function drawLocationMarker(lat, lon, med_accuracy){
+
+            if(map != null && map.graphics != null){
+                require([
+                    "esri/graphic",
+                    "esri/geometry/Circle",
+                    "esri/geometry/Point"],
+                        function(Graphic,Circle,Point){
+
+                            // We only want one symbol
+                            map.graphics.clear();
+
+                            var geometry = new Point(lon,lat);
+
+                            // Have to wait for map to initialize
+                            if(map != null){
+
+//                                var finalMarkerSymbol = null;
+//                                var finalCircleSymbol = null;
+
+                                if(med_accuracy <= 10){
+                                    finalMarkerSymbol = _greenMarkerSymbol;
+                                    finalCircleSymbol = _greenCircleSymbol;
+                                    progressBar.className = "progress-bar progress-bar-success";
+                                }
+                                if(med_accuracy <= 30){
+                                    finalMarkerSymbol = _yellowMarkerSymbol;
+                                    finalCircleSymbol = _yellowCircleSymbol;
+                                    progressBar.className = "progress-bar progress-bar-warning";
+                                }
+                                else{
+                                    finalMarkerSymbol = _redMarkerSymbol;
+                                    finalCircleSymbol = _redCircleSymbol;
+                                    progressBar.className = "progress-bar progress-bar-danger";
+                                }
+
+                                if(drawCircle){
+                                    _lastCircle = new Circle({
+                                        center: [lon,lat],
+                                        radius: med_accuracy,
+                                        geodesic: true
+                                    });
+
+                                    _lastCircle._tempType = "circle"; // so we can identify it on the graphicsLayer.
+
+                                    map.graphics.add(new Graphic(_lastCircle, finalCircleSymbol));
+                                }
+
+                                if(drawAllPoints){
+                                    var ptsArray = geolocationHelper.getLatLonArray();
+                                    ptsArray.forEach(function(entry){
+                                        var pt = new Point(entry.longitude, entry.latitude);
+                                        map.graphics.add(new Graphic(pt, _smallCircleSymbol));
+                                    });
+                                }
+
+                                map.graphics.add(new Graphic(geometry, finalMarkerSymbol));
+
+                                map.setExtent(_lastCircle.getExtent());
+
+//                                map.centerAndZoom(geometry, _zoomStop);
+                            }
+                        }
+                )
+            }
+            else{
+                missMapDraw = true;
+                positionObject = {lat:lat,lon:lon,accuracy:med_accuracy};
+            }
+        }
+
+        /**
+         * Calculate HH:MM:SS:MS from a given Date in millis
+         * @param date
+         * @param hmsOnly boolean HH:MM:SS only
+         * @returns {string}
+         * @private
+         */
+        function elapsedTime(/* Date */ date,hmsOnly){;
+            var msec = date;
+            var hh = Math.floor(msec / 1000 / 60 / 60);
+            msec -= hh * 1000 * 60 * 60;
+            var mm = Math.floor(msec / 1000 / 60);
+            msec -= mm * 1000 * 60;
+            var ss = Math.floor(msec / 1000);
+            msec -= ss * 1000;
+
+            hh = hh < 10 ? "0" + hh : hh;
+            mm = mm < 10 ? "0" + mm : mm;
+            ss = ss < 10 ? "0" + ss : ss;
+            msec = msec < 10 ? "0" + msec : msec;
+
+            if(isNaN(hh) || isNaN(mm) || isNaN(ss) || isNaN(msec)) {
+                return "00:00:00";
+            }
+
+            if(hmsOnly){
+                return hh + ":" + mm + ":" + ss;
+            }
+            else {
+                return hh + ":" + mm + ":" + ss + ":" + msec;
+            }
+        }
+
+        function reset(){
+            accuracyArray = [];
+            latArray = [];
+            lonArray = [];
+            if(map) map.graphics.clear();
+            progressBar.style.width = "0%";
+
+            avgTimeDiv.innerHTML = "Avg. time between updates: 0";
+            avgAccuracyDiv.innerHTML = "Avg. accuracy (m): 0";
+            accuracyDiv.innerHTML = "Accuracy (m): 0";
+            latLonDiv.innerHTML = "Lat: 0.0, Lon: 0.0";
+            altitudeDiv.innerHTML = "Altitude: 0";
+            speedDiv.innerHTML = "Speed: 0";
+            headingDiv.innerHTML = "Heading: 0";
+            timeDiffDiv.innerHTML = "Avg. time between updates: 0";
+            avgDistanceLatLonArrayDiv.innerHTML = "Avg. distance between updates (m): 0";
+            avgLatLonDiv.innerHTML = "Avg. center (lat, lon): 0.0, 0.0";
+            elapsedTimeDiv.innerHTML = "00:00:00";
+        }
+
+        function showAverageCenter() {
+            if(showAvgCenterCheckBox.checked) {
+                useActualLatLon = true;
+            }
+            else {
+                useActualLatLon = false;
+            }
+        }
+
+        function showAllPoints() {
+            if(showAllPtsCheckBox.checked) {
+                drawAllPoints = true;
+
+                require(["esri/graphic","esri/geometry/Point"],
+                        function(Graphic,Point){
+                            var ptsArray = geolocationHelper.getLatLonArray();
+                            ptsArray.forEach(function(entry){
+                                var pt = new Point(entry.longitude, entry.latitude);
+                                pt._tempType = "tempMarker";
+                                map.graphics.add(new Graphic(pt, _smallCircleSymbol));
+                            });
+                        });
+            }
+            else {
+                drawAllPoints = false;
+
+                map.graphics.graphics.forEach(function(graphic){
+                    if(graphic.hasOwnProperty("geometry") && graphic.geometry._tempType === "tempMarker") {
+                        map.graphics.remove(graphic);
+                    }
+                });
+            }
+        }
+
+        function showAccuracyCircle(evt) {
+            if(showCircleCheckBox.checked){
+                drawCircle = true;
+
+                require(["esri/graphic"],
+                        function(Graphic){
+                            map.graphics.add(new Graphic(_lastCircle, finalCircleSymbol));
+                        });
+            }
+            else {
+                drawCircle = false;
+
+                map.graphics.graphics.forEach(function(graphic) {
+                   if(graphic.hasOwnProperty("geometry") && graphic.geometry._tempType === "circle") {
+                       map.graphics.remove(graphic);
+                   }
+                });
+            }
+        }
+
+        function geoErrors(error) {
+            switch(error.code){
+                // "PERMISSION_DENIED"
+                case 1:
+                    alert("Permission denied to get location.");
+                    break;
+
+                // "POSITION_UNAVAILABLE"
+                case 2:
+                    alert("Failed to get a location.");
+                    break;
+
+                // "TIMEOUT"
+                case 3:
+                    //Read more at http://dev.w3.org/geo/api/spec-source.html#timeout
+                    alert("Application timed out before getting a valid location.");
+                    break;
+            }
+        }
+
+        function stopAll() {
+            stopTimers();
+            navigator.geolocation.clearWatch(_watchID);
+            _watchID = null;
+            startGeoBtn.className = "btn btn-default";
+        }
+
+        function restartAll() {
+            stopAll();
+            startMasterTimer();
+        }
+
+        function stopTimers(){
+
+            // Try multiple ways to kill the web worker
+            if(masterTimer) {
+                masterTimer.postMessage("stop");
+                masterTimer.terminate();
+            }
+            masterTimer = undefined; // Free up memory if not in use
+
+        }
+
+        function startMasterTimer() {
+
+            masterTimer = new Worker("js/background-timer.js");
+            masterTimer.onmessage = function(event){
+                elapsedTimeDiv.innerHTML = elapsedTime(new Date(Math.abs(event.data - startDate.getTime())),true);
+
+                var endTime = new Date();
+                timeDiffDiv.innerHTML = "Time since last update (ms): " + elapsedTime(new Date(Math.abs(endTime.getTime() - __currentTime)),true);
+            }
+        }
+
+        function handleChooserBtn() {
+
+            var btnArray = [].slice.call(chooserBtnBar.children);
+
+            this.className = "btn btn-default";
+            this.disabled = true;
+
+            geolocationHelper.MAX_ARRAY_SIZE = parseInt(this.id.substr(this.id.length - 2));
+
+            btnArray.forEach(function(child) {
+                if(child.id !== this.id){
+                    child.className = "btn btn-info";
+                    child.disabled = false;
+                }
+            }.bind(this));
+
+            startGeo();
+        }
+
+    </script>
+    <!-- jQuery (for Bootstrap's JavaScript plugins) -->
+    <script src="http://code.jquery.com/jquery-1.11.1.min.js"></script>
+    <!-- Include all  plugins or individual files as needed -->
+    <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+</body>
+</html>
