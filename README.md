@@ -1,11 +1,14 @@
 html5-geolocation-tool-js
 =========================
 
-Includes two apps for testing HTML5 geolocation on different devices. It lets you track your location as well as play with the different HTML5 Geolocation properties. This can be used on a desktop browser, mobile browser or within a PhoneGap project.
+Includes two apps for testing browser-based geolocation on different devices. It lets you track your location as well as play with the different Geolocation API properties. This can be used on a desktop browser, mobile browser or within a PhoneGap project.
 
 **[index.html](http://esri.github.io/html5-geolocation-tool-js/)** - let's you experiment with all the different settings as well as accumulating track points.
 
-**[data-test.html](http://esri.github.io/html5-geolocation-tool-js/data-test.html)** - is an experimental app that demonstrates a simple algorithm approach to helping users determine the best single location.
+**[field-location-template.html](http://esri.github.io/html5-geolocation-tool-js/field-location-template.html)** - is an experimental mobile app that demonstrates one approach to helping field workers determine the best single location. The app uses visual clues, 
+averaging and center point averaging. It's built using bootstrap.
+
+## Geolocation Tool
 
 Main View:
 
@@ -19,12 +22,35 @@ Settings View (cont'd):
 
 ![App](https://raw.github.com/Esri/html5-geolocation-tool-js/master/html5geolocation_downtown_denver_settings2_360w.png)
 
-## Features
+## Field Location Template
+
+Main View:
+
+![App](https://raw.github.com/Esri/html5-geolocation-tool-js/master/field-location-template-main.png)
+
+View 2:
+
+![App](https://raw.github.com/Esri/html5-geolocation-tool-js/master/field-location-template-2.png)
+
+View 3:
+
+![App](https://raw.github.com/Esri/html5-geolocation-tool-js/master/field-location-template-3.png)
+
+## Features for Geolocation Tool
 
 * Displays location on map.
 * Displays HTML5 geolocation properties (e.g. lat/lon, timestamp, etc)
 * Let's you configure and try out different scenarios by changing the geolocation properties.
 * Modify geolocation properties via the Settings menu.
+
+## Features for Field Location Template
+
+* Displays geolocation accuracy circle
+* Shows size of post-processing buffer
+* Gives visual cues as whether current location is good (green), so-so (yellow), or bad (red).
+* Shows averaged center location and its associated lat/lon
+* Shows accumulated points
+* Adjustable number of locations to post-process
 
 ## Requirements
 
