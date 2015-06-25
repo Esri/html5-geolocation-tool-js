@@ -55,9 +55,9 @@ View 3:
 ## Requirements
 
 * Internet browser: desktop, laptop, phone or tablet
-* Mapping Library [ArcGIS API for JavaScript](http://developers.arcgis.com/en/javascript/jssamples/)
+* Mapping Library [ArcGIS API for JavaScript](https://developers.arcgis.com/javascript/)
 * Internet connection by ethernet, cellular network and/or Wifi
-* Some experience with HTML/JavaScript.
+* Experience with HTML/JavaScript.
 
 ## Licensing
 Copyright 2015 Esri
