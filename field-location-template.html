@@ -160,7 +160,6 @@
 
         var _watchID = null;
         var _zoomStop = 17;
-        var _dateStart = new Date();
         var __currentTime = null;
 
         var startDate = new Date();
@@ -311,7 +310,10 @@
             reset();
             startMasterTimer();
 
-            __currentTime = _dateStart.getTime();
+            var currentDate = new Date();
+            __currentTime = currentDate.getTime();
+
+            startDate = new Date();
 
             _watchID = navigator.geolocation.watchPosition(
                 geoResults,
@@ -477,11 +479,14 @@
         }
 
         function reset(){
+            stopAll();
             accuracyArray = [];
             latArray = [];
             lonArray = [];
             if(map) map.graphics.clear();
             progressBar.style.width = "0%";
+
+            geolocationHelper.reset();
 
             avgTimeDiv.innerHTML = "Avg. time between updates: 0";
             avgAccuracyDiv.innerHTML = "Avg. accuracy (m): 0";
