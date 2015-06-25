@@ -324,7 +324,7 @@ var GeolocationHelper = function(/* Object */ filters) {
         var yAvg = y / latLonArray.length;
         var zAvg = z / latLonArray.length;
 
-        // Convert cartesian back to spherical
+        // Convert cartesian back to radians
         var sphericalLatRads = Math.asin(zAvg / radius);
         var sphericalLonRads = Math.atan2(yAvg , xAvg);
 
