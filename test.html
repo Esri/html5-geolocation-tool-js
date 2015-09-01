@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Geolocation Test</title>
+</head>
+<body>
+<script>
+
+    /**
+     * For testing if basic geolocation functionality is working
+     */
+
+    getLocation();
+
+    function getLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(showPosition);
+        } else {
+            console.log( "Geolocation is not supported by this browser." );
+        }
+    }
+    function showPosition(position) {
+        console.log("Location object received");
+        console.log( "Latitude: " + position.coords.latitude +
+                ", Longitude: " + position.coords.longitude  +
+                ", Accuracy " + position.coords.accuracy);
+    }
+</script>
+</body>
+</html>
