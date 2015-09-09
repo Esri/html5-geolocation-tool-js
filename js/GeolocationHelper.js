@@ -49,8 +49,6 @@ var GeolocationHelper = function(/* Object */ filters) {
     var latLonArray = [];
     var distanceArray = []; // an array of distances between each successive lat and lon
 
-    var _currentValues = {};
-
     if(!window.localStorage) {
         console.error("WARNING: GeolocationHelper.js requires local storage.");
     }
@@ -124,6 +122,7 @@ var GeolocationHelper = function(/* Object */ filters) {
     this.filter = function(accuracy, callback) {
 
         var reject = false;
+        var locationObject = {};
 
         if (accuracy > this.MAX_ACCURACY) {
             reject = true;
@@ -141,38 +140,30 @@ var GeolocationHelper = function(/* Object */ filters) {
             reject = true;
         }
 
+        locationObject.reject  = reject;
+        locationObject.count = latArray.length;
+        locationObject.avg_accuracy = avg_accuracy;
+        locationObject.avg_distance = avg_distance;
+        locationObject.med_lat = med_lat;                  // Median latitude
+        locationObject.med_lon = med_lon;                  // Median longitude
+        locationObject.med_accuracy = med_accuracy;        // Median accuracy
+        locationObject.med_speed = med_speed;              // Median speed
+        locationObject.med_distance = med_distance;        // Median distance between values in the array
+        locationObject.med_time_diff = med_timediff;       // Median difference in time between geolocation results
+        locationObject.stddev_lat = stddev_lat;            // Standard deviation latitude
+        locationObject.stddev_lon = stddev_lon;            // Standard deviation longitude
+        locationObject.stddev_accuracy = stddev_accuracy;  // Standard deviation accuracy
+        locationObject.stddev_distance = stddev_distance;  // Standard deviation distance between values in the array
+        locationObject.center_point = this.getCenter(latLonArray);
 
+        localStorage.geolocationObject = JSON.stringify(locationObject);
 
-        _currentValues.reject  = reject;
-        _currentValues.count = latArray.length;
-        _currentValues.avg_accuracy = avg_accuracy;
-        _currentValues.avg_distance = avg_distance;
-        _currentValues.med_lat = med_lat;                  // Median latitude
-        _currentValues.med_lon = med_lon;                  // Median longitude
-        _currentValues.med_accuracy = med_accuracy;        // Median accuracy
-        _currentValues.med_speed = med_speed;              // Median speed
-        _currentValues.med_distance = med_distance;        // Median distance between values in the array
-        _currentValues.med_time_diff = med_timediff;       // Median difference in time between geolocation results
-        _currentValues.stddev_lat = stddev_lat;            // Standard deviation latitude
-        _currentValues.stddev_lon = stddev_lon;            // Standard deviation longitude
-        _currentValues.stddev_accuracy = stddev_accuracy;  // Standard deviation accuracy
-        _currentValues.stddev_distance = stddev_distance;  // Standard deviation distance between values in the array
-        _currentValues.center_point = this.getCenter(latLonArray);
-
-        localStorage.geolocationObject = JSON.stringify(_currentValues);
-
-        callback(_currentValues);
+        callback(locationObject);
     };
 
     this.getLocationInfo = function(){
 
-        if(Object.keys(_currentValues).length === 0) {
-            if(localStorage.geolocationObject) {
-                _currentValues = localStorage.geolocationObject;
-            }
-        }
-
-        return _currentValues;
+        return localStorage.geolocationObject;
     };
 
     this.manageArraySize = function(){
@@ -292,7 +283,7 @@ var GeolocationHelper = function(/* Object */ filters) {
     };
 
     this.getMidPoint = function(){
-        return _currentValues.center_point;
+        return localStorage.geolocationObject.center_point;
     };
 
     /**
