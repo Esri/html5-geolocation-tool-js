@@ -3,9 +3,9 @@ html5-geolocation-tool-js
 
 Includes two apps for testing browser-based geolocation on different devices. It lets you track your location as well as play with the different Geolocation API properties. This can be used on a desktop browser, mobile browser or within a PhoneGap project.
 
-**[index.html](http://esri.github.io/html5-geolocation-tool-js/)** - let's you experiment with all the different settings as well as accumulating track points.
+**[index.html](https://esri.github.io/html5-geolocation-tool-js/)** - let's you experiment with all the different settings as well as accumulating track points.
 
-**[field-location-template.html](http://esri.github.io/html5-geolocation-tool-js/field-location-template.html)** - is an experimental mobile app that demonstrates one approach to helping field workers determine the best single location. The app uses visual clues, 
+**[field-location-template.html](https://esri.github.io/html5-geolocation-tool-js/field-location-template.html)** - is an experimental mobile app that demonstrates one approach to helping field workers determine the best single location. The app uses visual clues, 
 averaging and center point averaging. It's built using bootstrap.
 
 ## Geolocation Tool
@@ -60,7 +60,7 @@ View 3:
 * Experience with HTML/JavaScript.
 
 ## Licensing
-Copyright 2015 Esri
+Copyright 2016 Esri
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
