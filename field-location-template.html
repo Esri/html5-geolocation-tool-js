@@ -136,14 +136,13 @@
         </div>
     </div>
 
-    <script type="text/javascript">
-        var package_path = "//esri.github.com/bootstrap-map-js/src/js";
+    <script>
+        var locationPath = location.pathname.replace(/\/[^/]+$/, "");
         var dojoConfig = {
-            packages: [{
-                name: "application",
-                location: package_path
-            }]
-        };
+            paths: {
+                application: locationPath + "/js"
+            }
+        }
     </script>
 
     <!--<script src="js/atoll.js"></script>-->
