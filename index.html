@@ -330,8 +330,8 @@
         });
 
         //Listen for map zoom end events
-        controller._on(controller.map, "zoom-end", function (extent,zoom,anchor,level){
-            controller.zoomLevel = level;
+        controller._on(controller.map, "zoom-end", function (object){
+            controller.zoomLevel = object.level;
         })
 
         //Listen for when the map loads
