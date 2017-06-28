@@ -201,6 +201,10 @@ var GeolocationHelper = function(/* Object */ filters) {
         dist = dist * 1.609344 * 1000; // return meters
         //if (unit=="K") { dist = dist * 1.609344 };
         //if (unit=="N") { dist = dist * 0.8684 };
+
+        // Check for valid values
+        isNaN(dist) ? dist = 0 : dist;
+
         return dist;
     };
 
