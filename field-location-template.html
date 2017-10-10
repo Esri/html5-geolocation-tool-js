@@ -341,7 +341,7 @@
             var speed = position.coords.speed;
             var altitude = position.coords.altitude;
 
-            if(lat != null && lon != null) latLonDiv.innerHTML = "Lat: " + lat.toString() + ", " + "Lon: " + lon.toString();
+            if(lat != null && lon != null) latLonDiv.innerHTML = "Lat: " + lat.toFixed(4).toString() + ", " + "Lon: " + lon.toFixed(4).toString();
 //            if(timeStamp != null) timestampDiv.innerHTML = "Timestamp: " + new Date(timeStamp).toUTCString();
             if(accuracy != null) accuracyDiv.innerHTML = "Accuracy (m): " + accuracy.toString();
             if(heading != null) headingDiv.innerHTML = "Heading: " + heading.toString();
@@ -358,8 +358,8 @@
 
                 avgAccuracyDiv.innerHTML = "Avg. accuracy (m): " + result.avg_accuracy.toFixed(1).toString()
 
-                avgLatLonDiv.innerHTML = "Avg. Center (lat, lon): " + result.center_point.latitude +
-                ", " + result.center_point.longitude;
+                avgLatLonDiv.innerHTML = "Avg. Center (lat, lon): " + result.center_point.latitude.toFixed(4).toString() +
+                ", " + result.center_point.longitude.toFixed(4).toString();
 
                 progressBar.style.width = (result.count / geolocationHelper.MAX_ARRAY_SIZE * 100).toString() + "%";
                 progressBar.innerHTML = result.count + " / " + geolocationHelper.MAX_ARRAY_SIZE;
