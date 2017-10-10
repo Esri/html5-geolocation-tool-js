@@ -13,7 +13,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
     <title>Geodata Test</title>
 
-    <link rel="stylesheet" href="https://js.arcgis.com/3.20/esri/css/esri.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/3.22/esri/css/esri.css">
     <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" >
     <link rel="stylesheet" href="https://esri.github.io/bootstrap-map-js/src/css/bootstrapmap.css">
     <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css" >
@@ -33,6 +33,10 @@
         .progress-bar-warning {
             background-color: yellow;
             color: black;
+        }
+        .badge {
+            font-family: Arial, Helvetica, sans-serif;
+            margin-left: 10px;
         }
     </style>
 </head>
@@ -147,7 +151,7 @@
 
     <!--<script src="js/atoll.js"></script>-->
     <script src="js/GeolocationHelper.js"></script>
-    <script src="https://js.arcgis.com/3.20/"></script>
+    <script src="https://js.arcgis.com/3.22/"></script>
     <script>
 
         //
@@ -337,7 +341,7 @@
             var speed = position.coords.speed;
             var altitude = position.coords.altitude;
 
-            if(lat != null && lon != null) latLonDiv.innerHTML = "Lat: " + lat.toString() + ", " + "Lon: " + lon.toString();
+            if(lat != null && lon != null) latLonDiv.innerHTML = "Lat: " + lat.toFixed(4).toString() + ", " + "Lon: " + lon.toFixed(4).toString();
 //            if(timeStamp != null) timestampDiv.innerHTML = "Timestamp: " + new Date(timeStamp).toUTCString();
             if(accuracy != null) accuracyDiv.innerHTML = "Accuracy (m): " + accuracy.toString();
             if(heading != null) headingDiv.innerHTML = "Heading: " + heading.toString();
@@ -350,12 +354,12 @@
                 startGeoBtn.className = "btn btn-success";
 
                 avgDistanceLatLonArrayDiv.innerHTML = "Avg. distance between updates (m): " + result.avg_distance.toFixed(5).toString();
-                avgTimeDiv.innerHTML = "Avg. time between updates: " + elapsedTime(new Date(result.med_time_diff),true);
+                avgTimeDiv.innerHTML = "Avg. time between updates: " + elapsedTime(result.med_time_diff,false).toString();
 
                 avgAccuracyDiv.innerHTML = "Avg. accuracy (m): " + result.avg_accuracy.toFixed(1).toString()
 
-                avgLatLonDiv.innerHTML = "Avg. Center (lat, lon): " + result.center_point.latitude +
-                ", " + result.center_point.longitude;
+                avgLatLonDiv.innerHTML = "Avg. Center (lat, lon): " + result.center_point.latitude.toFixed(4).toString() +
+                ", " + result.center_point.longitude.toFixed(4).toString();
 
                 progressBar.style.width = (result.count / geolocationHelper.MAX_ARRAY_SIZE * 100).toString() + "%";
                 progressBar.innerHTML = result.count + " / " + geolocationHelper.MAX_ARRAY_SIZE;
@@ -509,7 +513,7 @@
             }
         }
 
-        function showAllPoints() {
+        function  showAllPoints() {
             if(showAllPtsCheckBox.checked) {
                 drawAllPoints = true;
 
@@ -629,7 +633,7 @@
 
     </script>
     <!-- jQuery (for Bootstrap's JavaScript plugins) -->
-    <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
     <!-- Include all  plugins or individual files as needed -->
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
 </body>
