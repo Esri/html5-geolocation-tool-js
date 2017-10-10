@@ -270,7 +270,7 @@ var GeolocationHelper = function(/* Object */ filters) {
             }
         });
 
-        return this. median(diff);
+        return this.median(diff);
 
     };
 
