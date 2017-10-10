@@ -354,7 +354,7 @@
                 startGeoBtn.className = "btn btn-success";
 
                 avgDistanceLatLonArrayDiv.innerHTML = "Avg. distance between updates (m): " + result.avg_distance.toFixed(5).toString();
-                avgTimeDiv.innerHTML = "Avg. time between updates: " + elapsedTime(new Date(result.med_time_diff),true);
+                avgTimeDiv.innerHTML = "Avg. time between updates: " + elapsedTime(result.med_time_diff,false).toString();
 
                 avgAccuracyDiv.innerHTML = "Avg. accuracy (m): " + result.avg_accuracy.toFixed(1).toString()
 
@@ -513,7 +513,7 @@
             }
         }
 
-        function showAllPoints() {
+        function  showAllPoints() {
             if(showAllPtsCheckBox.checked) {
                 drawAllPoints = true;
 
