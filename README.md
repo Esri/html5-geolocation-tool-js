@@ -60,7 +60,7 @@ View 3:
 * Experience with HTML/JavaScript.
 
 ## Licensing
-Copyright 2016 Esri
+Copyright 2018 Esri
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -74,7 +74,4 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-A copy of the license is available in the repository's [license.txt]( https://raw.github.com/Esri/android-gps-test-tool/master/license.txt) file.
-
-[](Esri Tags: JavaScript HTML5 GPS Test ArcGIS Location Tools)
-[](Esri Language: JavaScript)
+A copy of the license is available in the repository's [license.txt](http://www.apache.org/licenses/LICENSE-2.0) file.
