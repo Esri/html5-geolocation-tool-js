@@ -13,7 +13,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
     <title>Geodata Test</title>
 
-    <link rel="stylesheet" href="https://js.arcgis.com/3.22/esri/css/esri.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/3.23/esri/css/esri.css">
     <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" >
     <link rel="stylesheet" href="https://esri.github.io/bootstrap-map-js/src/css/bootstrapmap.css">
     <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css" >
@@ -151,7 +151,7 @@
 
     <!--<script src="js/atoll.js"></script>-->
     <script src="js/GeolocationHelper.js"></script>
-    <script src="https://js.arcgis.com/3.22/"></script>
+    <script src="https://js.arcgis.com/3.23/"></script>
     <script>
 
         //
@@ -169,19 +169,12 @@
         var accuracyArray = [];
         var latArray = [];
         var lonArray = [];
-        var maxArraySize = 100;
-        var lastUpdateDiffMillis = 0;
-        var lastUpdateDateTime = 0;
         var positionObject = {}, missMapDraw = false;
-        var differenceTimer = null;
         var masterTimer = null;
         var map = null, _greenMarkerSymbol = null, _redMarkerSymbol = null, _yellowMarkerSymbol = null;
         var _greenCircleSymbol = null, _redCircleSymbol = null, _yellowCircleSymbol = null, _smallCircleSymbol = null, _lastCircle = null;
         var finalMarkerSymbol = null;
         var finalCircleSymbol = null;
-
-        var stddev_accuracy = 0, stddev_lat = 0, stddev_lon = 0;
-        var avg_accuracy = 0, avg_lat = 0, avg_lon = 0;
 
         // User controls
         var drawCircle = true;
