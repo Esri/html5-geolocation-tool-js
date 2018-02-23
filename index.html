@@ -4,11 +4,8 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
     <title>HTML 5 - Geolocation</title>
-    <link rel="stylesheet" href="https://js.arcgis.com/3.22/esri/css/esri.css">
-    <link rel="stylesheet" href="https://code.jquery.com/mobile/1.3.2/jquery.mobile-1.3.2.min.css" />
-
-    <!-- http://jquerymobile.com/blog/2013/04/10/announcing-jquery-mobile-1-3-1/#download -->
-    <!-- http://code.jquery.com/ -->
+    <link rel="stylesheet" href="https://js.arcgis.com/3.23/esri/css/esri.css">
+    <link rel="stylesheet" href="https://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.css" />
 
     <style type="text/css">
         html,body, div[data-role ="page"] {
@@ -95,7 +92,7 @@
 <body>
 <div data-role="page" id="home">
 
-    <div data-theme="a" data-role="header" data-position="fixed">
+    <div data-theme="b" data-role="header" data-position="fixed">
         <h3>HTML5 Geolocation</h3>
         <a href="#" data-role="button" data-icon="grid" data-iconpos="notext" onclick="controller.showLocation();">Location</a>
         <a href="#settings" data-role="button" data-icon="gear" class="ui-btn-right" data-iconpos="notext">Settings</a>
@@ -140,8 +137,8 @@
 
 </div>
 
-<div data-role="page" id="settings" data-add-back-btn="true">
-    <div data-role="header">
+<div data-role="page" id="settings">
+    <div data-theme="b" data-role="header" data-add-back-btn="true">
         <h1>Settings</h1>
     </div>
     <div data-role="content">
@@ -208,11 +205,10 @@
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-1.9.1.min.js"></script>
-<script src="https://code.jquery.com/mobile/1.3.2/jquery.mobile-1.3.2.min.js"></script>
+<script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+<script src="https://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
 <script src="https://esri.github.io/jquery-mobile-map-js/src/jQueryHelper.js"></script>
-
-<script src="https://js.arcgis.com/3.22/"></script>
+<script src="https://js.arcgis.com/3.23/"></script>
 
 <script type="text/javascript">
 
